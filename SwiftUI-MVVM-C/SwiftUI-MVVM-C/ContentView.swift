@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    static let username = "huynguyencong"
+    static let username = "juicebyjustin"
     
     var body: some View {
         NavigationView {

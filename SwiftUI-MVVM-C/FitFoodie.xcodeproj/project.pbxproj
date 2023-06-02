@@ -39,6 +39,9 @@
 		43A601F8265273B700B24B9D /* RepoListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A601F7265273B700B24B9D /* RepoListViewModel.swift */; };
 		43A601FF2652780100B24B9D /* View+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A601FE2652780100B24B9D /* View+Utils.swift */; };
 		43A60203265278A600B24B9D /* RepoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A60202265278A600B24B9D /* RepoCell.swift */; };
+		D0023E4E2A298CEB00FFD681 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0023E4D2A298CEB00FFD681 /* HomeView.swift */; };
+		D0023E502A298CF400FFD681 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0023E4F2A298CF400FFD681 /* HomeViewModel.swift */; };
+		D0023E522A298D0200FFD681 /* HomeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0023E512A298D0200FFD681 /* HomeCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,7 +65,7 @@
 		43552D9F2653A24700E97D8D /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		43552DA52653B44C00E97D8D /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		43552DA92653B8CF00E97D8D /* Publisher+Utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Publisher+Utils.swift"; sourceTree = "<group>"; };
-		43736D7B2652280700CE4368 /* SwiftUI-MVVM-C.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI-MVVM-C.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		43736D7B2652280700CE4368 /* FitFoodie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FitFoodie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43736D7E2652280700CE4368 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		43736D802652280700CE4368 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		43736D822652280700CE4368 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -76,7 +79,7 @@
 		43A601B92652560200B24B9D /* GithubNetworkProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubNetworkProvider.swift; sourceTree = "<group>"; };
 		43A601BD2652561E00B24B9D /* GithubRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubRouter.swift; sourceTree = "<group>"; };
 		43A601C2265257EE00B24B9D /* Repo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repo.swift; sourceTree = "<group>"; };
-		43A601CA265267C000B24B9D /* SwiftUI-MVVM-CTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "SwiftUI-MVVM-CTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		43A601CA265267C000B24B9D /* FitFoodieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FitFoodieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		43A601CC265267C000B24B9D /* SwiftUI_MVVM_CTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_MVVM_CTests.swift; sourceTree = "<group>"; };
 		43A601CE265267C000B24B9D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43A601D92652687F00B24B9D /* repos.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = repos.json; sourceTree = "<group>"; };
@@ -87,6 +90,9 @@
 		43A601F7265273B700B24B9D /* RepoListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoListViewModel.swift; sourceTree = "<group>"; };
 		43A601FE2652780100B24B9D /* View+Utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "View+Utils.swift"; sourceTree = "<group>"; };
 		43A60202265278A600B24B9D /* RepoCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoCell.swift; sourceTree = "<group>"; };
+		D0023E4D2A298CEB00FFD681 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		D0023E4F2A298CF400FFD681 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		D0023E512A298D0200FFD681 /* HomeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,8 +169,8 @@
 		43736D7C2652280700CE4368 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				43736D7B2652280700CE4368 /* SwiftUI-MVVM-C.app */,
-				43A601CA265267C000B24B9D /* SwiftUI-MVVM-CTests.xctest */,
+				43736D7B2652280700CE4368 /* FitFoodie.app */,
+				43A601CA265267C000B24B9D /* FitFoodieTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -281,6 +287,7 @@
 		43A601EA265272B500B24B9D /* Modules */ = {
 			isa = PBXGroup;
 			children = (
+				D0023E4B2A298CCF00FFD681 /* Home */,
 				43552D932653A1C000E97D8D /* Profile */,
 				43A601EB265272BC00B24B9D /* RepoList */,
 			);
@@ -317,12 +324,30 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
+		D0023E4B2A298CCF00FFD681 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				D0023E4C2A298CDC00FFD681 /* Home */,
+				D0023E512A298D0200FFD681 /* HomeCoordinator.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		D0023E4C2A298CDC00FFD681 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				D0023E4D2A298CEB00FFD681 /* HomeView.swift */,
+				D0023E4F2A298CF400FFD681 /* HomeViewModel.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		43736D7A2652280700CE4368 /* SwiftUI-MVVM-C */ = {
+		43736D7A2652280700CE4368 /* FitFoodie */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "SwiftUI-MVVM-C" */;
+			buildConfigurationList = 43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "FitFoodie" */;
 			buildPhases = (
 				43736D772652280700CE4368 /* Sources */,
 				43736D782652280700CE4368 /* Frameworks */,
@@ -332,17 +357,17 @@
 			);
 			dependencies = (
 			);
-			name = "SwiftUI-MVVM-C";
+			name = FitFoodie;
 			packageProductDependencies = (
 				43A6019D26522CFF00B24B9D /* Alamofire */,
 			);
 			productName = "SwiftUI-MVVM-C";
-			productReference = 43736D7B2652280700CE4368 /* SwiftUI-MVVM-C.app */;
+			productReference = 43736D7B2652280700CE4368 /* FitFoodie.app */;
 			productType = "com.apple.product-type.application";
 		};
-		43A601C9265267C000B24B9D /* SwiftUI-MVVM-CTests */ = {
+		43A601C9265267C000B24B9D /* FitFoodieTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "SwiftUI-MVVM-CTests" */;
+			buildConfigurationList = 43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "FitFoodieTests" */;
 			buildPhases = (
 				43A601C6265267C000B24B9D /* Sources */,
 				43A601C7265267C000B24B9D /* Frameworks */,
@@ -353,9 +378,9 @@
 			dependencies = (
 				43A601D0265267C000B24B9D /* PBXTargetDependency */,
 			);
-			name = "SwiftUI-MVVM-CTests";
+			name = FitFoodieTests;
 			productName = "SwiftUI-MVVM-CTests";
-			productReference = 43A601CA265267C000B24B9D /* SwiftUI-MVVM-CTests.xctest */;
+			productReference = 43A601CA265267C000B24B9D /* FitFoodieTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -376,7 +401,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 43736D762652280700CE4368 /* Build configuration list for PBXProject "SwiftUI-MVVM-C" */;
+			buildConfigurationList = 43736D762652280700CE4368 /* Build configuration list for PBXProject "FitFoodie" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -392,8 +417,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				43736D7A2652280700CE4368 /* SwiftUI-MVVM-C */,
-				43A601C9265267C000B24B9D /* SwiftUI-MVVM-CTests */,
+				43736D7A2652280700CE4368 /* FitFoodie */,
+				43A601C9265267C000B24B9D /* FitFoodieTests */,
 			);
 		};
 /* End PBXProject section */
@@ -427,6 +452,7 @@
 				43736D7F2652280700CE4368 /* AppDelegate.swift in Sources */,
 				43552D9B2653A23400E97D8D /* ProfileCoordinator.swift in Sources */,
 				43552D85265376F300E97D8D /* RepoDetailsViewModel.swift in Sources */,
+				D0023E4E2A298CEB00FFD681 /* HomeView.swift in Sources */,
 				43552D7A2653603200E97D8D /* EmptyNavigationLink.swift in Sources */,
 				43A60203265278A600B24B9D /* RepoCell.swift in Sources */,
 				43A601FF2652780100B24B9D /* View+Utils.swift in Sources */,
@@ -443,7 +469,9 @@
 				43552DA62653B44D00E97D8D /* ProfileViewModel.swift in Sources */,
 				43A601B52652309900B24B9D /* NetworkUtils.swift in Sources */,
 				43736D832652280700CE4368 /* ContentView.swift in Sources */,
+				D0023E522A298D0200FFD681 /* HomeCoordinator.swift in Sources */,
 				43552D7F2653670800E97D8D /* RepoDetailsView.swift in Sources */,
+				D0023E502A298CF400FFD681 /* HomeViewModel.swift in Sources */,
 				43552D8E2653877700E97D8D /* Container.swift in Sources */,
 				43A601BA2652560200B24B9D /* GithubNetworkProvider.swift in Sources */,
 				43552DA02653A24700E97D8D /* ProfileView.swift in Sources */,
@@ -466,7 +494,7 @@
 /* Begin PBXTargetDependency section */
 		43A601D0265267C000B24B9D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 43736D7A2652280700CE4368 /* SwiftUI-MVVM-C */;
+			target = 43736D7A2652280700CE4368 /* FitFoodie */;
 			targetProxy = 43A601CF265267C000B24B9D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -657,7 +685,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftUI-MVVM-C.app/SwiftUI-MVVM-C";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitFoodie.app/FitFoodie";
 			};
 			name = Debug;
 		};
@@ -677,14 +705,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftUI-MVVM-C.app/SwiftUI-MVVM-C";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitFoodie.app/FitFoodie";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		43736D762652280700CE4368 /* Build configuration list for PBXProject "SwiftUI-MVVM-C" */ = {
+		43736D762652280700CE4368 /* Build configuration list for PBXProject "FitFoodie" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43736D8D2652280900CE4368 /* Debug */,
@@ -693,7 +721,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "SwiftUI-MVVM-C" */ = {
+		43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "FitFoodie" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43736D902652280900CE4368 /* Debug */,
@@ -702,7 +730,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "SwiftUI-MVVM-CTests" */ = {
+		43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "FitFoodieTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43A601D1265267C000B24B9D /* Debug */,
