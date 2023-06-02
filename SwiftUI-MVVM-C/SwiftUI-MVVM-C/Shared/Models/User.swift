@@ -16,6 +16,8 @@ struct User: Codable {
     }
     
     var id: Int?
+    var email: String?
+    var password: String?
     var login: String?
     var name: String?
     var bio: String?

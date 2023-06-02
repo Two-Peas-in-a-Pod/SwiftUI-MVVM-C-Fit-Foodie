@@ -33,7 +33,7 @@ struct RepoListCoordinator: View {
             }
         }
         .fullScreenCover(isPresented: $isProfilePresented, content: {
-            HomeCoordinator(username: username)
+            LoginCoordinator(username: username)
         })
     }
     
