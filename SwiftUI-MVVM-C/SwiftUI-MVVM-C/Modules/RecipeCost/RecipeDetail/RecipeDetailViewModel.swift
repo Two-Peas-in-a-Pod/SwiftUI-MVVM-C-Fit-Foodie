@@ -10,7 +10,6 @@ import Combine
 @MainActor
 class RecipeDetailViewModel: ObservableObject {
     @Published var recipe: Recipe
-    @Published var isAddingIngredient = false
     @Published var costResult: RecipeCostResult
 
     init(recipe: Recipe) {

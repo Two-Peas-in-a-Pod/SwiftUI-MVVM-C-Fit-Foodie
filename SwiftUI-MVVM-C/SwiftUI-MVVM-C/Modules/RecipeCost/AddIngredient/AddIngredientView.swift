@@ -26,6 +26,8 @@ struct AddIngredientView: View {
                 .padding()
 
                 switch viewModel.activeTab {
+                case .library:
+                    libraryView
                 case .manual:
                     manualEntryForm
                 case .search:
@@ -50,6 +52,14 @@ struct AddIngredientView: View {
                     }
                 }
             )
+        }
+    }
+
+    // MARK: - Library Tab
+
+    private var libraryView: some View {
+        IngredientLibraryView { template in
+            viewModel.prefillFromTemplate(template)
         }
     }
 
@@ -126,8 +136,7 @@ struct AddIngredientView: View {
             .padding()
 
             if viewModel.isSearching {
-                ProgressView("Searching Kroger…")
-                    .padding()
+                ProgressView("Searching Kroger…").padding()
                 Spacer()
             } else if let error = viewModel.searchError {
                 Text(error)
@@ -157,6 +166,49 @@ struct AddIngredientView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Ingredient Library
+
+struct IngredientLibraryView: View {
+    @Query(sort: \IngredientTemplate.name) private var templates: [IngredientTemplate]
+    @State private var searchText = ""
+    let onSelect: (IngredientTemplate) -> Void
+
+    private var filtered: [IngredientTemplate] {
+        guard !searchText.isEmpty else { return templates }
+        return templates.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if templates.isEmpty {
+                Spacer()
+                ContentUnavailableView(
+                    "No Saved Ingredients",
+                    systemImage: "cart",
+                    description: Text("Ingredients you add are saved here for reuse in future recipes.")
+                )
+                Spacer()
+            } else {
+                List(filtered) { template in
+                    Button {
+                        onSelect(template)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(template.name)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                            Text("\(String(format: "$%.2f", template.defaultPurchaseCost)) for \(String(format: "%g", template.defaultPurchaseQuantity)) \(template.defaultPurchaseUnit)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .searchable(text: $searchText, prompt: "Search library")
             }
         }
     }

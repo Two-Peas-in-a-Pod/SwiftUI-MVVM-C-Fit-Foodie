@@ -25,7 +25,7 @@ class AddIngredientViewModel: ObservableObject {
     @Published var confirmedPrice: Double?
 
     // MARK: - State
-    @Published var activeTab: AddIngredientTab = .manual
+    @Published var activeTab: AddIngredientTab = .library
 
     var networkClient: GroceryNetworkProvider = GroceryNetworkClient()
     private var cancellables = Set<AnyCancellable>()
@@ -36,6 +36,19 @@ class AddIngredientViewModel: ObservableObject {
         Double(purchaseQuantity) != nil &&
         Double(recipeQuantity) != nil
     }
+
+    // MARK: - Library
+
+    func prefillFromTemplate(_ template: IngredientTemplate) {
+        name = template.name
+        purchaseCost = String(format: "%.2f", template.defaultPurchaseCost)
+        purchaseQuantity = String(format: "%g", template.defaultPurchaseQuantity)
+        purchaseUnit = template.defaultPurchaseUnit
+        recipeUnit = template.defaultRecipeUnit
+        activeTab = .manual
+    }
+
+    // MARK: - Kroger search
 
     func searchProducts() {
         let query = searchQuery.trimmingCharacters(in: .whitespaces)
@@ -64,13 +77,25 @@ class AddIngredientViewModel: ObservableObject {
         activeTab = .manual
     }
 
+    // MARK: - Receipt
+
+    func prefillFromReceiptItem(_ item: ReceiptLineItem) {
+        name = item.name
+        purchaseCost = String(format: "%.2f", item.price)
+        activeTab = .manual
+    }
+
+    // MARK: - Save
+
     func saveIngredient(to recipe: Recipe, context: ModelContext) {
         guard let cost = Double(purchaseCost),
               let pQty = Double(purchaseQuantity),
               let rQty = Double(recipeQuantity) else { return }
 
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+
         let ingredient = Ingredient(
-            name: name.trimmingCharacters(in: .whitespaces),
+            name: trimmedName,
             purchaseCost: cost,
             purchaseQuantity: pQty,
             purchaseUnit: purchaseUnit,
@@ -79,18 +104,38 @@ class AddIngredientViewModel: ObservableObject {
         )
         recipe.ingredients.append(ingredient)
         context.insert(ingredient)
+
+        // Upsert ingredient library template
+        upsertTemplate(name: trimmedName, cost: cost, purchaseQty: pQty, purchaseUnit: purchaseUnit, recipeUnit: recipeUnit, context: context)
+
         try? context.save()
     }
 
-    /// Populate fields from a receipt-parsed line item for user confirmation.
-    func prefillFromReceiptItem(_ item: ReceiptLineItem) {
-        name = item.name
-        purchaseCost = String(format: "%.2f", item.price)
-        activeTab = .manual
+    private func upsertTemplate(name: String, cost: Double, purchaseQty: Double, purchaseUnit: String, recipeUnit: String, context: ModelContext) {
+        let descriptor = FetchDescriptor<IngredientTemplate>(
+            predicate: #Predicate { $0.name == name }
+        )
+        if let existing = try? context.fetch(descriptor).first {
+            // Update with latest purchase info
+            existing.defaultPurchaseCost = cost
+            existing.defaultPurchaseQuantity = purchaseQty
+            existing.defaultPurchaseUnit = purchaseUnit
+            existing.defaultRecipeUnit = recipeUnit
+        } else {
+            let template = IngredientTemplate(
+                name: name,
+                defaultPurchaseCost: cost,
+                defaultPurchaseQuantity: purchaseQty,
+                defaultPurchaseUnit: purchaseUnit,
+                defaultRecipeUnit: recipeUnit
+            )
+            context.insert(template)
+        }
     }
 }
 
 enum AddIngredientTab: String, CaseIterable {
+    case library = "Library"
     case manual = "Manual"
     case search = "Lookup Price"
     case receipt = "Scan Receipt"

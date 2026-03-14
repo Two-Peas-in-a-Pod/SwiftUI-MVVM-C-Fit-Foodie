@@ -10,12 +10,11 @@ struct RecipeDetailView: View {
     @StateObject private var viewModel: RecipeDetailViewModel
     @Environment(\.modelContext) private var modelContext
     @State private var servingsText: String
-    let tapAddIngredientAction: (Recipe) -> Void
+    @State private var isAddingIngredient = false
 
-    init(recipe: Recipe, tapAddIngredientAction: @escaping (Recipe) -> Void) {
+    init(recipe: Recipe) {
         _viewModel = StateObject(wrappedValue: RecipeDetailViewModel(recipe: recipe))
         _servingsText = State(initialValue: "\(recipe.servingsPerBatch)")
-        self.tapAddIngredientAction = tapAddIngredientAction
     }
 
     var body: some View {
@@ -29,27 +28,32 @@ struct RecipeDetailView: View {
         }
         .navigationTitle(viewModel.recipe.name)
         .navigationBarTitleDisplayMode(.large)
-        .navigationBarItems(trailing:
-            Button {
-                tapAddIngredientAction(viewModel.recipe)
-            } label: {
-                Image(systemName: "plus")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    isAddingIngredient = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
-        )
+        }
         .onAppear {
             viewModel.refreshCost()
+        }
+        .sheet(isPresented: $isAddingIngredient, onDismiss: {
+            viewModel.refreshCost()
+        }) {
+            AddIngredientView(recipe: viewModel.recipe)
         }
     }
 
     // MARK: - Subviews
 
     private var costSummaryCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                costItem(label: "Total Cost", value: viewModel.costResult.formattedTotalCost)
-                Divider()
-                costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
-            }
+        HStack {
+            costItem(label: "Total Cost", value: viewModel.costResult.formattedTotalCost)
+            Divider()
+            costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
