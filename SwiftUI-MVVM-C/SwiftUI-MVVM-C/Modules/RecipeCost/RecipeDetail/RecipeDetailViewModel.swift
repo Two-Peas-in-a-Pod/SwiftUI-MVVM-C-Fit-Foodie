@@ -25,6 +25,13 @@ class RecipeDetailViewModel: ObservableObject {
         UserDefaults.standard.double(forKey: "salesTaxRate") / 100.0
     }
 
+    func deleteIngredient(_ ingredient: Ingredient, from context: ModelContext) {
+        recipe.ingredients.removeAll { $0.id == ingredient.id }
+        context.delete(ingredient)
+        try? context.save()
+        refreshCost()
+    }
+
     func deleteIngredients(at offsets: IndexSet, from context: ModelContext) {
         let toDelete = offsets.map { recipe.ingredients[$0] }
         toDelete.forEach { context.delete($0) }

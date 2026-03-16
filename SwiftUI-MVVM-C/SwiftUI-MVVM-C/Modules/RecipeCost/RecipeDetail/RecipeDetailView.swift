@@ -12,6 +12,7 @@ struct RecipeDetailView: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @State private var servingsText: String
     @State private var isAddingIngredient = false
+    @State private var editingIngredient: Ingredient?
 
     init(recipe: Recipe) {
         _viewModel = StateObject(wrappedValue: RecipeDetailViewModel(recipe: recipe))
@@ -48,6 +49,11 @@ struct RecipeDetailView: View {
             viewModel.refreshCost()
         }) {
             AddIngredientView(recipe: viewModel.recipe)
+        }
+        .sheet(item: $editingIngredient, onDismiss: {
+            viewModel.refreshCost()
+        }) { ingredient in
+            EditIngredientSheet(ingredient: ingredient)
         }
     }
 
@@ -153,9 +159,121 @@ struct RecipeDetailView: View {
             Text(String(format: "$%.4f", ingredient.costContribution))
                 .font(.subheadline)
                 .fontWeight(.medium)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.tertiaryLabel)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            editingIngredient = ingredient
+        }
+        .contextMenu {
+            Button { editingIngredient = ingredient } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button(role: .destructive) {
+                viewModel.deleteIngredient(ingredient, from: modelContext)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}
+
+// MARK: - Edit Ingredient Sheet
+
+private struct EditIngredientSheet: View {
+    let ingredient: Ingredient
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name: String
+    @State private var purchaseCost: String
+    @State private var purchaseQuantity: String
+    @State private var purchaseUnit: String
+    @State private var recipeQuantity: String
+    @State private var recipeUnit: String
+
+    private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+
+    init(ingredient: Ingredient) {
+        self.ingredient = ingredient
+        _name = State(initialValue: ingredient.name)
+        _purchaseCost = State(initialValue: String(format: "%.2f", ingredient.purchaseCost))
+        _purchaseQuantity = State(initialValue: String(format: "%g", ingredient.purchaseQuantity))
+        _purchaseUnit = State(initialValue: ingredient.purchaseUnit)
+        _recipeQuantity = State(initialValue: String(format: "%g", ingredient.recipeQuantity))
+        _recipeUnit = State(initialValue: ingredient.recipeUnit)
+    }
+
+    private var isValid: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
+        Double(purchaseCost) != nil &&
+        Double(purchaseQuantity) != nil &&
+        Double(recipeQuantity) != nil
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Ingredient")) {
+                    TextField("Name", text: $name)
+                }
+                Section(header: Text("Purchase Info — what you bought at the store")) {
+                    HStack {
+                        Text("Cost ($)")
+                        Spacer()
+                        TextField("e.g. 6.99", text: $purchaseCost)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    HStack {
+                        Text("Quantity")
+                        Spacer()
+                        TextField("e.g. 32", text: $purchaseQuantity)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Picker("Unit", selection: $purchaseUnit) {
+                        ForEach(units, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+                Section(header: Text("Recipe Usage — how much this recipe calls for")) {
+                    HStack {
+                        Text("Quantity")
+                        Spacer()
+                        TextField("e.g. 2", text: $recipeQuantity)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Picker("Unit", selection: $recipeUnit) {
+                        ForEach(units, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+            }
+            .navigationTitle("Edit Ingredient")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { dismiss() },
+                trailing: Button("Save") { save() }.disabled(!isValid)
+            )
+        }
+    }
+
+    private func save() {
+        guard let cost = Double(purchaseCost),
+              let pQty = Double(purchaseQuantity),
+              let rQty = Double(recipeQuantity) else { return }
+        ingredient.name = name.trimmingCharacters(in: .whitespaces)
+        ingredient.purchaseCost = cost
+        ingredient.purchaseQuantity = pQty
+        ingredient.purchaseUnit = purchaseUnit
+        ingredient.recipeQuantity = rQty
+        ingredient.recipeUnit = recipeUnit
+        try? modelContext.save()
+        dismiss()
     }
 }
