@@ -18,6 +18,7 @@ class IngredientTemplate {
     var defaultPurchaseQuantity: Double
     var defaultPurchaseUnit: String
     var defaultRecipeUnit: String
+    var isAlcohol: Bool
 
     init(
         id: UUID = UUID(),
@@ -25,7 +26,8 @@ class IngredientTemplate {
         defaultPurchaseCost: Double = 0,
         defaultPurchaseQuantity: Double = 1,
         defaultPurchaseUnit: String = "oz",
-        defaultRecipeUnit: String = "oz"
+        defaultRecipeUnit: String = "oz",
+        isAlcohol: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -33,5 +35,6 @@ class IngredientTemplate {
         self.defaultPurchaseQuantity = defaultPurchaseQuantity
         self.defaultPurchaseUnit = defaultPurchaseUnit
         self.defaultRecipeUnit = defaultRecipeUnit
+        self.isAlcohol = isAlcohol
     }
 }

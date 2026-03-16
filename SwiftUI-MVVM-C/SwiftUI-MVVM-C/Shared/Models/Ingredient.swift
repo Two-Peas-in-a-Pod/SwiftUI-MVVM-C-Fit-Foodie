@@ -20,6 +20,8 @@ class Ingredient {
     var recipeQuantity: Double
     /// Unit for the recipe amount — should match purchaseUnit
     var recipeUnit: String
+    /// Whether this ingredient is taxed at the alcohol rate rather than the grocery rate
+    var isAlcohol: Bool
     var recipe: Recipe?
 
     init(
@@ -29,7 +31,8 @@ class Ingredient {
         purchaseQuantity: Double,
         purchaseUnit: String,
         recipeQuantity: Double,
-        recipeUnit: String
+        recipeUnit: String,
+        isAlcohol: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -38,6 +41,7 @@ class Ingredient {
         self.purchaseUnit = purchaseUnit
         self.recipeQuantity = recipeQuantity
         self.recipeUnit = recipeUnit
+        self.isAlcohol = isAlcohol
     }
 
     /// Cost attributed to this ingredient for one recipe batch.

@@ -103,36 +103,73 @@ private struct AddRecipeSheet: View {
 
 private struct CostSettingsSheet: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
+    @AppStorage("krogerClientId") private var krogerClientId: String = ""
+    @AppStorage("krogerClientSecret") private var krogerClientSecret: String = ""
     @Environment(\.dismiss) private var dismiss
-    @State private var taxText = ""
+
+    @State private var groceryTaxText = ""
+    @State private var alcoholTaxText = ""
+    @State private var clientIdText = ""
+    @State private var clientSecretText = ""
 
     var body: some View {
         NavigationView {
             Form {
                 Section(
-                    header: Text("Sales Tax"),
-                    footer: Text("Enter the tax rate you pay on groceries. This is added on top of ingredient costs. Leave at 0 if groceries aren't taxed in your area.")
+                    header: Text("Grocery Tax Rate"),
+                    footer: Text("Tax rate applied to regular grocery ingredients. Leave at 0 if groceries aren't taxed in your area.")
                 ) {
                     HStack {
-                        TextField("e.g. 8.5", text: $taxText)
+                        TextField("e.g. 8.5", text: $groceryTaxText)
                             .keyboardType(.decimalPad)
                         Text("%")
                             .foregroundColor(.secondary)
                     }
+                }
+
+                Section(
+                    header: Text("Alcohol Tax Rate"),
+                    footer: Text("Tax rate applied to ingredients marked as Alcohol. Often higher than the grocery rate.")
+                ) {
+                    HStack {
+                        TextField("e.g. 10.25", text: $alcoholTaxText)
+                            .keyboardType(.decimalPad)
+                        Text("%")
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section(
+                    header: Text("Kroger API"),
+                    footer: Text("Credentials from developer.kroger.com. Required to use the ingredient price lookup feature. Stored locally on your device.")
+                ) {
+                    TextField("Client ID", text: $clientIdText)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                    SecureField("Client Secret", text: $clientSecretText)
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 leading: Button("Cancel") { dismiss() },
-                trailing: Button("Save") {
-                    salesTaxRate = Double(taxText) ?? 0
-                    dismiss()
-                }
+                trailing: Button("Save") { save() }
             )
             .onAppear {
-                taxText = salesTaxRate == 0 ? "" : String(format: "%g", salesTaxRate)
+                groceryTaxText = salesTaxRate == 0 ? "" : String(format: "%g", salesTaxRate)
+                alcoholTaxText = alcoholTaxRate == 0 ? "" : String(format: "%g", alcoholTaxRate)
+                clientIdText = krogerClientId
+                clientSecretText = krogerClientSecret
             }
         }
+    }
+
+    private func save() {
+        salesTaxRate = Double(groceryTaxText) ?? 0
+        alcoholTaxRate = Double(alcoholTaxText) ?? 0
+        krogerClientId = clientIdText.trimmingCharacters(in: .whitespaces)
+        krogerClientSecret = clientSecretText
+        dismiss()
     }
 }

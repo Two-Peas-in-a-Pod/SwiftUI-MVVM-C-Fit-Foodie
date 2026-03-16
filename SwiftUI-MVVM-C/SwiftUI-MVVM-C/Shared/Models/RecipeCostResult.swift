@@ -7,15 +7,18 @@ import Foundation
 
 /// Computed cost breakdown — not stored, derived from Recipe on demand.
 struct RecipeCostResult {
-    let totalIngredientCost: Double  // pre-tax subtotal
-    let costPerBatch: Double
-    let costPerServing: Double
-    /// Fractional tax rate (e.g. 0.085 for 8.5%)
-    let taxRate: Double
+    let subtotal: Double             // pre-tax total
+    let groceryTaxAmount: Double
+    let alcoholTaxAmount: Double
+    let costPerServingWithTax: Double
+    /// Fractional grocery tax rate (e.g. 0.085 for 8.5%) — used for display
+    let groceryTaxRate: Double
+    /// Fractional alcohol tax rate — used for display
+    let alcoholTaxRate: Double
 
-    var taxAmount: Double { totalIngredientCost * taxRate }
-    var totalWithTax: Double { totalIngredientCost + taxAmount }
-    var costPerServingWithTax: Double { costPerServing * (1 + taxRate) }
+    var taxAmount: Double { groceryTaxAmount + alcoholTaxAmount }
+    var totalWithTax: Double { subtotal + taxAmount }
+    var hasTax: Bool { taxAmount > 0 }
 
     private static let formatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -28,19 +31,29 @@ struct RecipeCostResult {
         formatter.string(from: NSNumber(value: value)) ?? "$0.00"
     }
 
-    var formattedSubtotal: String { Self.fmt(totalIngredientCost) }
-    var formattedTaxAmount: String { Self.fmt(taxAmount) }
-    var formattedTotalCost: String { Self.fmt(totalWithTax) }
-    var formattedCostPerServing: String { Self.fmt(costPerServingWithTax) }
+    var formattedSubtotal: String          { Self.fmt(subtotal) }
+    var formattedGroceryTaxAmount: String  { Self.fmt(groceryTaxAmount) }
+    var formattedAlcoholTaxAmount: String  { Self.fmt(alcoholTaxAmount) }
+    var formattedTaxAmount: String         { Self.fmt(taxAmount) }
+    var formattedTotalCost: String         { Self.fmt(totalWithTax) }
+    var formattedCostPerServing: String    { Self.fmt(costPerServingWithTax) }
 }
 
 extension Recipe {
-    func costResult(taxRate: Double = 0) -> RecipeCostResult {
-        RecipeCostResult(
-            totalIngredientCost: totalCost,
-            costPerBatch: totalCost,
-            costPerServing: costPerServing,
-            taxRate: taxRate
+    func costResult(groceryTaxRate: Double = 0, alcoholTaxRate: Double = 0) -> RecipeCostResult {
+        let groceryCost = ingredients.filter { !$0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
+        let alcoholCost = ingredients.filter { $0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
+        let groceryTax = groceryCost * groceryTaxRate
+        let alcoholTax = alcoholCost * alcoholTaxRate
+        let total = totalCost + groceryTax + alcoholTax
+        let perServing = servingsPerBatch > 0 ? total / Double(servingsPerBatch) : total
+        return RecipeCostResult(
+            subtotal: totalCost,
+            groceryTaxAmount: groceryTax,
+            alcoholTaxAmount: alcoholTax,
+            costPerServingWithTax: perServing,
+            groceryTaxRate: groceryTaxRate,
+            alcoholTaxRate: alcoholTaxRate
         )
     }
 }

@@ -81,6 +81,7 @@ struct AddIngredientView: View {
         Form {
             Section(header: Text("Ingredient")) {
                 TextField("Name (e.g. Olive Oil)", text: $viewModel.name)
+                Toggle("Alcohol", isOn: $viewModel.isAlcohol)
             }
 
             Section(header: Text("Purchase Info — what you bought at the store")) {

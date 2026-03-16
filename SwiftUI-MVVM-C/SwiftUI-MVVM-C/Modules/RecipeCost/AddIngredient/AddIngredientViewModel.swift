@@ -16,6 +16,7 @@ class AddIngredientViewModel: ObservableObject {
     @Published var purchaseUnit = "oz"
     @Published var recipeQuantity = ""
     @Published var recipeUnit = "oz"
+    @Published var isAlcohol = false
 
     // MARK: - Kroger search
     @Published var searchQuery = ""
@@ -27,7 +28,10 @@ class AddIngredientViewModel: ObservableObject {
     // MARK: - State
     @Published var activeTab: AddIngredientTab = .library
 
-    var networkClient: GroceryNetworkProvider = GroceryNetworkClient()
+    var networkClient: GroceryNetworkProvider = GroceryNetworkClient(
+        clientId: UserDefaults.standard.string(forKey: "krogerClientId") ?? "",
+        clientSecret: UserDefaults.standard.string(forKey: "krogerClientSecret") ?? ""
+    )
     private var cancellables = Set<AnyCancellable>()
 
     var isFormValid: Bool {
@@ -45,6 +49,7 @@ class AddIngredientViewModel: ObservableObject {
         purchaseQuantity = String(format: "%g", template.defaultPurchaseQuantity)
         purchaseUnit = template.defaultPurchaseUnit
         recipeUnit = template.defaultRecipeUnit
+        isAlcohol = template.isAlcohol
         activeTab = .manual
     }
 
@@ -100,18 +105,19 @@ class AddIngredientViewModel: ObservableObject {
             purchaseQuantity: pQty,
             purchaseUnit: purchaseUnit,
             recipeQuantity: rQty,
-            recipeUnit: recipeUnit
+            recipeUnit: recipeUnit,
+            isAlcohol: isAlcohol
         )
         recipe.ingredients.append(ingredient)
         context.insert(ingredient)
 
         // Upsert ingredient library template
-        upsertTemplate(name: trimmedName, cost: cost, purchaseQty: pQty, purchaseUnit: purchaseUnit, recipeUnit: recipeUnit, context: context)
+        upsertTemplate(name: trimmedName, cost: cost, purchaseQty: pQty, purchaseUnit: purchaseUnit, recipeUnit: recipeUnit, isAlcohol: isAlcohol, context: context)
 
         try? context.save()
     }
 
-    private func upsertTemplate(name: String, cost: Double, purchaseQty: Double, purchaseUnit: String, recipeUnit: String, context: ModelContext) {
+    private func upsertTemplate(name: String, cost: Double, purchaseQty: Double, purchaseUnit: String, recipeUnit: String, isAlcohol: Bool, context: ModelContext) {
         let descriptor = FetchDescriptor<IngredientTemplate>(
             predicate: #Predicate { $0.name == name }
         )
@@ -121,13 +127,15 @@ class AddIngredientViewModel: ObservableObject {
             existing.defaultPurchaseQuantity = purchaseQty
             existing.defaultPurchaseUnit = purchaseUnit
             existing.defaultRecipeUnit = recipeUnit
+            existing.isAlcohol = isAlcohol
         } else {
             let template = IngredientTemplate(
                 name: name,
                 defaultPurchaseCost: cost,
                 defaultPurchaseQuantity: purchaseQty,
                 defaultPurchaseUnit: purchaseUnit,
-                defaultRecipeUnit: recipeUnit
+                defaultRecipeUnit: recipeUnit,
+                isAlcohol: isAlcohol
             )
             context.insert(template)
         }

@@ -18,11 +18,18 @@ class RecipeDetailViewModel: ObservableObject {
     }
 
     func refreshCost() {
-        costResult = recipe.costResult(taxRate: Self.currentTaxRate)
+        costResult = recipe.costResult(
+            groceryTaxRate: Self.groceryTaxRate,
+            alcoholTaxRate: Self.alcoholTaxRate
+        )
     }
 
-    private static var currentTaxRate: Double {
+    private static var groceryTaxRate: Double {
         UserDefaults.standard.double(forKey: "salesTaxRate") / 100.0
+    }
+
+    private static var alcoholTaxRate: Double {
+        UserDefaults.standard.double(forKey: "alcoholTaxRate") / 100.0
     }
 
     func deleteIngredient(_ ingredient: Ingredient, from context: ModelContext) {

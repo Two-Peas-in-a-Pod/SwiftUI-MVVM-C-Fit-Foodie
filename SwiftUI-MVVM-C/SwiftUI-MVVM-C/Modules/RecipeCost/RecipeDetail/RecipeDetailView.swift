@@ -10,6 +10,7 @@ struct RecipeDetailView: View {
     @StateObject private var viewModel: RecipeDetailViewModel
     @Environment(\.modelContext) private var modelContext
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @State private var servingsText: String
     @State private var isAddingIngredient = false
     @State private var editingIngredient: Ingredient?
@@ -45,6 +46,9 @@ struct RecipeDetailView: View {
         .onChange(of: salesTaxRate) { _, _ in
             viewModel.refreshCost()
         }
+        .onChange(of: alcoholTaxRate) { _, _ in
+            viewModel.refreshCost()
+        }
         .sheet(isPresented: $isAddingIngredient, onDismiss: {
             viewModel.refreshCost()
         }) {
@@ -66,7 +70,7 @@ struct RecipeDetailView: View {
                 Divider()
                 costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
             }
-            if viewModel.costResult.taxRate > 0 {
+            if viewModel.costResult.hasTax {
                 Divider()
                 HStack {
                     Text("Subtotal")
@@ -77,14 +81,27 @@ struct RecipeDetailView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                HStack {
-                    Text("Tax (\(String(format: "%g", salesTaxRate))%)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(viewModel.costResult.formattedTaxAmount)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if viewModel.costResult.groceryTaxAmount > 0 {
+                    HStack {
+                        Text("Grocery Tax (\(String(format: "%g", salesTaxRate))%)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(viewModel.costResult.formattedGroceryTaxAmount)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                if viewModel.costResult.alcoholTaxAmount > 0 {
+                    HStack {
+                        Text("Alcohol Tax (\(String(format: "%g", alcoholTaxRate))%)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(viewModel.costResult.formattedAlcoholTaxAmount)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
         }
@@ -146,8 +163,20 @@ struct RecipeDetailView: View {
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(ingredient.name)
-                    .font(.subheadline)
+                HStack(spacing: 6) {
+                    Text(ingredient.name)
+                        .font(.subheadline)
+                    if ingredient.isAlcohol {
+                        Text("Alcohol")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.purple.opacity(0.15))
+                            .foregroundColor(.purple)
+                            .cornerRadius(4)
+                    }
+                }
                 Text("\(ingredient.recipeQuantity.formatted()) \(ingredient.recipeUnit) used")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -196,6 +225,7 @@ private struct EditIngredientSheet: View {
     @State private var purchaseUnit: String
     @State private var recipeQuantity: String
     @State private var recipeUnit: String
+    @State private var isAlcohol: Bool
 
     private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
@@ -207,6 +237,7 @@ private struct EditIngredientSheet: View {
         _purchaseUnit = State(initialValue: ingredient.purchaseUnit)
         _recipeQuantity = State(initialValue: String(format: "%g", ingredient.recipeQuantity))
         _recipeUnit = State(initialValue: ingredient.recipeUnit)
+        _isAlcohol = State(initialValue: ingredient.isAlcohol)
     }
 
     private var isValid: Bool {
@@ -221,6 +252,7 @@ private struct EditIngredientSheet: View {
             Form {
                 Section(header: Text("Ingredient")) {
                     TextField("Name", text: $name)
+                    Toggle("Alcohol", isOn: $isAlcohol)
                 }
                 Section(header: Text("Purchase Info — what you bought at the store")) {
                     HStack {
@@ -273,6 +305,7 @@ private struct EditIngredientSheet: View {
         ingredient.purchaseUnit = purchaseUnit
         ingredient.recipeQuantity = rQty
         ingredient.recipeUnit = recipeUnit
+        ingredient.isAlcohol = isAlcohol
         try? modelContext.save()
         dismiss()
     }
