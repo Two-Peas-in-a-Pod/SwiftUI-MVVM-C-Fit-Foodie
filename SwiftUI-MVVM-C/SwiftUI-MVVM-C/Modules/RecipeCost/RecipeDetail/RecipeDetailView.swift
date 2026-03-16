@@ -190,7 +190,7 @@ struct RecipeDetailView: View {
                 .fontWeight(.medium)
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(.tertiaryLabel)
+                .foregroundColor(.primary)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
