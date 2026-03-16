@@ -14,7 +14,10 @@ class RecipeDetailViewModel: ObservableObject {
 
     init(recipe: Recipe) {
         self.recipe = recipe
-        self.costResult = recipe.costResult(taxRate: Self.currentTaxRate)
+        self.costResult = recipe.costResult(
+            groceryTaxRate: Self.groceryTaxRate,
+            alcoholTaxRate: Self.alcoholTaxRate
+        )
     }
 
     func refreshCost() {
