@@ -9,6 +9,7 @@ import SwiftData
 struct RecipeDetailView: View {
     @StateObject private var viewModel: RecipeDetailViewModel
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @State private var servingsText: String
     @State private var isAddingIngredient = false
 
@@ -40,6 +41,9 @@ struct RecipeDetailView: View {
         .onAppear {
             viewModel.refreshCost()
         }
+        .onChange(of: salesTaxRate) { _, _ in
+            viewModel.refreshCost()
+        }
         .sheet(isPresented: $isAddingIngredient, onDismiss: {
             viewModel.refreshCost()
         }) {
@@ -50,10 +54,33 @@ struct RecipeDetailView: View {
     // MARK: - Subviews
 
     private var costSummaryCard: some View {
-        HStack {
-            costItem(label: "Total Cost", value: viewModel.costResult.formattedTotalCost)
-            Divider()
-            costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
+        VStack(spacing: 12) {
+            HStack {
+                costItem(label: "Total Cost", value: viewModel.costResult.formattedTotalCost)
+                Divider()
+                costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
+            }
+            if viewModel.costResult.taxRate > 0 {
+                Divider()
+                HStack {
+                    Text("Subtotal")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(viewModel.costResult.formattedSubtotal)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                HStack {
+                    Text("Tax (\(String(format: "%g", salesTaxRate))%)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(viewModel.costResult.formattedTaxAmount)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding()
         .background(Color(.secondarySystemBackground))

@@ -14,11 +14,15 @@ class RecipeDetailViewModel: ObservableObject {
 
     init(recipe: Recipe) {
         self.recipe = recipe
-        self.costResult = recipe.costResult()
+        self.costResult = recipe.costResult(taxRate: Self.currentTaxRate)
     }
 
     func refreshCost() {
-        costResult = recipe.costResult()
+        costResult = recipe.costResult(taxRate: Self.currentTaxRate)
+    }
+
+    private static var currentTaxRate: Double {
+        UserDefaults.standard.double(forKey: "salesTaxRate") / 100.0
     }
 
     func deleteIngredients(at offsets: IndexSet, from context: ModelContext) {

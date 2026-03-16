@@ -40,9 +40,44 @@ class Ingredient {
         self.recipeUnit = recipeUnit
     }
 
-    /// Cost attributed to this ingredient for one recipe batch
+    /// Cost attributed to this ingredient for one recipe batch.
+    /// Converts purchase and recipe quantities to a common base unit before dividing,
+    /// so mixed units like "4 lb purchased, 3 oz used" calculate correctly.
     var costContribution: Double {
         guard purchaseQuantity > 0 else { return 0 }
+        let purchaseCat = Self.unitCategory(purchaseUnit)
+        let recipeCat = Self.unitCategory(recipeUnit)
+        if purchaseCat == recipeCat && purchaseCat != "count" {
+            let purchaseBase = Self.toBaseUnit(purchaseQuantity, unit: purchaseUnit)
+            let recipeBase = Self.toBaseUnit(recipeQuantity, unit: recipeUnit)
+            guard purchaseBase > 0 else { return 0 }
+            return purchaseCost * (recipeBase / purchaseBase)
+        }
+        // Same unit or incompatible categories — fall back to raw ratio
         return purchaseCost * (recipeQuantity / purchaseQuantity)
+    }
+
+    private static func unitCategory(_ unit: String) -> String {
+        switch unit.lowercased() {
+        case "oz", "lb", "g", "kg": return "weight"
+        case "ml", "l", "tsp", "tbsp", "cup": return "volume"
+        default: return "count"
+        }
+    }
+
+    /// Converts a quantity to the category's base unit (oz for weight, ml for volume).
+    private static func toBaseUnit(_ quantity: Double, unit: String) -> Double {
+        switch unit.lowercased() {
+        case "oz":   return quantity
+        case "lb":   return quantity * 16
+        case "g":    return quantity / 28.3495
+        case "kg":   return quantity * 1000 / 28.3495
+        case "ml":   return quantity
+        case "l":    return quantity * 1000
+        case "tsp":  return quantity * 4.92892
+        case "tbsp": return quantity * 14.7868
+        case "cup":  return quantity * 236.588
+        default:     return quantity
+        }
     }
 }

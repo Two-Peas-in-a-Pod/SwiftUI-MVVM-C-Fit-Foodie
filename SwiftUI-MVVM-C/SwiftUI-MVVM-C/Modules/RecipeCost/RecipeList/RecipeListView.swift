@@ -10,6 +10,7 @@ struct RecipeListView: View {
     @Query(sort: \Recipe.name) private var recipes: [Recipe]
     @Environment(\.modelContext) private var modelContext
     @State private var isAddingRecipe = false
+    @State private var isShowingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,11 @@ struct RecipeListView: View {
             }
             .navigationTitle("Recipes")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { isShowingSettings = true } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { isAddingRecipe = true } label: {
                         Image(systemName: "plus")
@@ -34,6 +40,9 @@ struct RecipeListView: View {
             }
             .sheet(isPresented: $isAddingRecipe) {
                 AddRecipeSheet()
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                CostSettingsSheet()
             }
             .overlay {
                 if recipes.isEmpty {
@@ -87,5 +96,43 @@ private struct AddRecipeSheet: View {
         modelContext.insert(recipe)
         try? modelContext.save()
         dismiss()
+    }
+}
+
+// MARK: - Cost Settings
+
+private struct CostSettingsSheet: View {
+    @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
+    @Environment(\.dismiss) private var dismiss
+    @State private var taxText = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(
+                    header: Text("Sales Tax"),
+                    footer: Text("Enter the tax rate you pay on groceries. This is added on top of ingredient costs. Leave at 0 if groceries aren't taxed in your area.")
+                ) {
+                    HStack {
+                        TextField("e.g. 8.5", text: $taxText)
+                            .keyboardType(.decimalPad)
+                        Text("%")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { dismiss() },
+                trailing: Button("Save") {
+                    salesTaxRate = Double(taxText) ?? 0
+                    dismiss()
+                }
+            )
+            .onAppear {
+                taxText = salesTaxRate == 0 ? "" : String(format: "%g", salesTaxRate)
+            }
+        }
     }
 }

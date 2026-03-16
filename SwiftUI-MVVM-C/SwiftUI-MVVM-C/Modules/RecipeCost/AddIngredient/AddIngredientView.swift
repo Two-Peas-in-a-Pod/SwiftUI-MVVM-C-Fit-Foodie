@@ -12,6 +12,8 @@ struct AddIngredientView: View {
     @Environment(\.dismiss) private var dismiss
     let recipe: Recipe
 
+    @State private var pendingTemplate: IngredientTemplate?
+
     private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
     var body: some View {
@@ -53,13 +55,23 @@ struct AddIngredientView: View {
                 }
             )
         }
+        .sheet(item: $pendingTemplate) { template in
+            RecipeUsageSheet(template: template) { qty, unit in
+                viewModel.prefillFromTemplate(template)
+                viewModel.recipeQuantity = qty
+                viewModel.recipeUnit = unit
+                viewModel.saveIngredient(to: recipe, context: modelContext)
+                pendingTemplate = nil
+                dismiss()
+            }
+        }
     }
 
     // MARK: - Library Tab
 
     private var libraryView: some View {
         IngredientLibraryView { template in
-            viewModel.prefillFromTemplate(template)
+            pendingTemplate = template
         }
     }
 
@@ -167,6 +179,63 @@ struct AddIngredientView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Recipe Usage Sheet
+
+/// Focused sheet shown when picking from the library.
+/// Displays the stored purchase info and asks only for the recipe usage amount.
+private struct RecipeUsageSheet: View {
+    let template: IngredientTemplate
+    let onSave: (String, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var qty = ""
+    @State private var unit: String
+
+    private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+
+    init(template: IngredientTemplate, onSave: @escaping (String, String) -> Void) {
+        self.template = template
+        self.onSave = onSave
+        _unit = State(initialValue: template.defaultRecipeUnit)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Ingredient")) {
+                    HStack {
+                        Text(template.name)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(String(format: "$%.2f", template.defaultPurchaseCost)) / \(String(format: "%g", template.defaultPurchaseQuantity)) \(template.defaultPurchaseUnit)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Section(header: Text("How much does this recipe use?")) {
+                    HStack {
+                        TextField("e.g. 3", text: $qty)
+                            .keyboardType(.decimalPad)
+                        Picker("Unit", selection: $unit) {
+                            ForEach(units, id: \.self) { Text($0).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+            }
+            .navigationTitle("Set Amount")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { dismiss() },
+                trailing: Button("Add to Recipe") {
+                    onSave(qty, unit)
+                }
+                .disabled(Double(qty) == nil)
+            )
         }
     }
 }
