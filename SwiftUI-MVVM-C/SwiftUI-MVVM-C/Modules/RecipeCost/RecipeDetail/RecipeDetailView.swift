@@ -185,7 +185,7 @@ struct RecipeDetailView: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
-            Text(String(format: "$%.4f", ingredient.costContribution))
+            Text(String(format: "$%.2f", ingredient.costContribution))
                 .font(.subheadline)
                 .fontWeight(.medium)
             Image(systemName: "chevron.right")
@@ -227,7 +227,7 @@ private struct EditIngredientSheet: View {
     @State private var recipeUnit: String
     @State private var isAlcohol: Bool
 
-    private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+    private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
     init(ingredient: Ingredient) {
         self.ingredient = ingredient

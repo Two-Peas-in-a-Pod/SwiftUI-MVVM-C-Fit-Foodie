@@ -14,7 +14,7 @@ struct AddIngredientView: View {
 
     @State private var pendingTemplate: IngredientTemplate?
 
-    private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+    private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
     var body: some View {
         NavigationView {
@@ -196,7 +196,7 @@ private struct RecipeUsageSheet: View {
     @State private var qty = ""
     @State private var unit: String
 
-    private let units = ["oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+    private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
     init(template: IngredientTemplate, onSave: @escaping (String, String) -> Void) {
         self.template = template

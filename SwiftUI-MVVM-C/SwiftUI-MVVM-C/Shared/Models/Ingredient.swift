@@ -64,7 +64,7 @@ class Ingredient {
     private static func unitCategory(_ unit: String) -> String {
         switch unit.lowercased() {
         case "oz", "lb", "g", "kg": return "weight"
-        case "ml", "l", "tsp", "tbsp", "cup": return "volume"
+        case "fl oz", "ml", "l", "tsp", "tbsp", "cup": return "volume"
         default: return "count"
         }
     }
@@ -72,16 +72,17 @@ class Ingredient {
     /// Converts a quantity to the category's base unit (oz for weight, ml for volume).
     private static func toBaseUnit(_ quantity: Double, unit: String) -> Double {
         switch unit.lowercased() {
-        case "oz":   return quantity
-        case "lb":   return quantity * 16
-        case "g":    return quantity / 28.3495
-        case "kg":   return quantity * 1000 / 28.3495
-        case "ml":   return quantity
-        case "l":    return quantity * 1000
-        case "tsp":  return quantity * 4.92892
-        case "tbsp": return quantity * 14.7868
-        case "cup":  return quantity * 236.588
-        default:     return quantity
+        case "oz":    return quantity
+        case "lb":    return quantity * 16
+        case "g":     return quantity / 28.3495
+        case "kg":    return quantity * 1000 / 28.3495
+        case "fl oz": return quantity * 29.5735
+        case "ml":    return quantity
+        case "l":     return quantity * 1000
+        case "tsp":   return quantity * 4.92892
+        case "tbsp":  return quantity * 14.7868
+        case "cup":   return quantity * 236.588
+        default:      return quantity
         }
     }
 }
