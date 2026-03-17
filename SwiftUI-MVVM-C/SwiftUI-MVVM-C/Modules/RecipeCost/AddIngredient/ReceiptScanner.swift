@@ -45,7 +45,7 @@ struct ReceiptScanner {
             }
 
             let observations = request.results as? [VNRecognizedTextObservation] ?? []
-            let lines = observations.compactMap { $0.topCandidates(1).first?.string }
+            let lines = reconstructLines(from: observations)
             let items = parseLineItems(from: lines)
 
             DispatchQueue.main.async {
@@ -70,12 +70,51 @@ struct ReceiptScanner {
         }
     }
 
+    // MARK: - Line reconstruction
+
+    /// Vision returns each visually distinct text region as a separate observation.
+    /// On receipts the item name and its right-aligned price are often two separate
+    /// observations with a wide gap between them. This method groups observations that
+    /// share the same vertical position and sorts them left-to-right so the parser
+    /// sees a single string like "HEAVY CREAM   5.32" instead of two fragments.
+    private static func reconstructLines(from observations: [VNRecognizedTextObservation]) -> [String] {
+        guard !observations.isEmpty else { return [] }
+
+        // Vision bounding boxes are in normalized coords (origin = bottom-left, 1 = top/right).
+        // Group observations whose vertical midpoints are within 2 % of each other.
+        let tolerance = 0.02
+
+        typealias Fragment = (xMin: Double, text: String)
+        var groups: [(yMid: Double, fragments: [Fragment])] = []
+
+        for obs in observations {
+            guard let text = obs.topCandidates(1).first?.string else { continue }
+            let yMid = obs.boundingBox.midY
+            let xMin = obs.boundingBox.minX
+            if let idx = groups.firstIndex(where: { abs($0.yMid - yMid) < tolerance }) {
+                groups[idx].fragments.append((xMin, text))
+            } else {
+                groups.append((yMid: yMid, fragments: [(xMin, text)]))
+            }
+        }
+
+        // Sort top-to-bottom (higher Y value = higher on page in Vision coordinates).
+        groups.sort { $0.yMid > $1.yMid }
+
+        return groups.map { group in
+            group.fragments
+                .sorted { $0.xMin < $1.xMin }
+                .map { $0.text }
+                .joined(separator: "   ")
+        }
+    }
+
     // MARK: - Parsing
 
-    /// Parses OCR lines looking for patterns like "Item Name   $4.99" or "Item Name   4.99"
+    /// Parses OCR lines looking for patterns like "Item Name   $4.99" or "Item Name   4.99 F"
     private static func parseLineItems(from lines: [String]) -> [ReceiptLineItem] {
-        // Regex: optional $, then digits.digits at the end of the line
-        let pricePattern = #"^(.+?)\s+\$?(\d+\.\d{2})\s*$"#
+        // Regex: optional $, digits.digits, optional trailing single-letter tax code (F/T/N/etc.)
+        let pricePattern = #"^(.+?)\s+\$?(\d+\.\d{2})(?:\s+[A-Za-z])?\s*$"#
         guard let regex = try? NSRegularExpression(pattern: pricePattern) else { return [] }
 
         var items: [ReceiptLineItem] = []
