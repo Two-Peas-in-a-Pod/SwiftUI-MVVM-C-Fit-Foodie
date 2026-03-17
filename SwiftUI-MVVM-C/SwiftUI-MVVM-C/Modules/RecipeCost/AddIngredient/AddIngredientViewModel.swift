@@ -17,6 +17,9 @@ class AddIngredientViewModel: ObservableObject {
     @Published var recipeQuantity = ""
     @Published var recipeUnit = "oz"
     @Published var isAlcohol = false
+    /// True once the user has explicitly dismissed the auto-detect pill for the current name.
+    /// Resets to false when the name is cleared so detection can fire again on a fresh entry.
+    private(set) var alcoholDismissed = false
 
     // MARK: - Kroger search
     @Published var searchQuery = ""
@@ -39,6 +42,36 @@ class AddIngredientViewModel: ObservableObject {
         Double(purchaseCost) != nil &&
         Double(purchaseQuantity) != nil &&
         Double(recipeQuantity) != nil
+    }
+
+    // MARK: - Alcohol auto-detection
+
+    /// Call whenever `name` changes. Updates `isAlcohol` based on keyword matching
+    /// unless the user has already dismissed the pill for this entry session.
+    func updateAlcoholDetection() {
+        if name.isEmpty { alcoholDismissed = false }
+        guard !alcoholDismissed else { return }
+        isAlcohol = Self.detectsAlcohol(in: name)
+    }
+
+    /// User tapped ✕ on the pill — clear the flag and suppress further auto-detection
+    /// until the name field is cleared.
+    func dismissAlcohol() {
+        isAlcohol = false
+        alcoholDismissed = true
+    }
+
+    /// Returns true if the ingredient name contains a known alcohol keyword.
+    static func detectsAlcohol(in name: String) -> Bool {
+        let keywords: Set<String> = [
+            "wine", "beer", "vodka", "whiskey", "whisky", "rum", "gin", "tequila",
+            "bourbon", "champagne", "ale", "lager", "cider", "mead", "sake",
+            "brandy", "liqueur", "liquor", "spirits", "prosecco", "vermouth",
+            "schnapps", "port", "sherry", "stout", "pilsner", "seltzer hard",
+            "hard seltzer", "kahlúa", "baileys", "aperol", "campari"
+        ]
+        let lower = name.lowercased()
+        return keywords.contains { lower.contains($0) }
     }
 
     // MARK: - Library

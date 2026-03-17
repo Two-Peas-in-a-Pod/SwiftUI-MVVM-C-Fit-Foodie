@@ -218,6 +218,7 @@ private struct EditIngredientSheet: View {
     let ingredient: Ingredient
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
 
     @State private var name: String
     @State private var purchaseCost: String
@@ -226,6 +227,7 @@ private struct EditIngredientSheet: View {
     @State private var recipeQuantity: String
     @State private var recipeUnit: String
     @State private var isAlcohol: Bool
+    @State private var alcoholDismissed: Bool
 
     private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
 
@@ -238,6 +240,7 @@ private struct EditIngredientSheet: View {
         _recipeQuantity = State(initialValue: String(format: "%g", ingredient.recipeQuantity))
         _recipeUnit = State(initialValue: ingredient.recipeUnit)
         _isAlcohol = State(initialValue: ingredient.isAlcohol)
+        _alcoholDismissed = State(initialValue: false)
     }
 
     private var isValid: Bool {
@@ -252,7 +255,29 @@ private struct EditIngredientSheet: View {
             Form {
                 Section(header: Text("Ingredient")) {
                     TextField("Name", text: $name)
-                    Toggle("Alcohol", isOn: $isAlcohol)
+                        .onChange(of: name) { _, newName in
+                            if newName.isEmpty { alcoholDismissed = false }
+                            if !alcoholDismissed {
+                                isAlcohol = AddIngredientViewModel.detectsAlcohol(in: newName)
+                            }
+                        }
+                    if alcoholTaxRate > 0 && isAlcohol {
+                        HStack {
+                            Label("Alcohol tax will apply", systemImage: "wineglass")
+                                .font(.caption)
+                                .foregroundColor(.purple)
+                            Spacer()
+                            Button {
+                                isAlcohol = false
+                                alcoholDismissed = true
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.purple.opacity(0.5))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .listRowBackground(Color.purple.opacity(0.08))
+                    }
                 }
                 Section(header: Text("Purchase Info — what you bought at the store")) {
                     HStack {

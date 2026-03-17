@@ -10,6 +10,7 @@ struct AddIngredientView: View {
     @StateObject private var viewModel = AddIngredientViewModel()
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     let recipe: Recipe
 
     @State private var pendingTemplate: IngredientTemplate?
@@ -81,7 +82,21 @@ struct AddIngredientView: View {
         Form {
             Section(header: Text("Ingredient")) {
                 TextField("Name (e.g. Olive Oil)", text: $viewModel.name)
-                Toggle("Alcohol", isOn: $viewModel.isAlcohol)
+                    .onChange(of: viewModel.name) { _, _ in viewModel.updateAlcoholDetection() }
+                if alcoholTaxRate > 0 && viewModel.isAlcohol {
+                    HStack {
+                        Label("Alcohol tax will apply", systemImage: "wineglass")
+                            .font(.caption)
+                            .foregroundColor(.purple)
+                        Spacer()
+                        Button { viewModel.dismissAlcohol() } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.purple.opacity(0.5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowBackground(Color.purple.opacity(0.08))
+                }
             }
 
             Section(header: Text("Purchase Info — what you bought at the store")) {
