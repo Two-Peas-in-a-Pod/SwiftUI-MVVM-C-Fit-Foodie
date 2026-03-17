@@ -3,10 +3,12 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3FD51FEF2F6A056800A8C919 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3FD51FEE2F6A056800A8C919 /* Assets.xcassets */; };
+		3FD51FF02F6A056800A8C919 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3FD51FEE2F6A056800A8C919 /* Assets.xcassets */; };
 		43552D7526535EC100E97D8D /* Binding+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43552D7426535EC100E97D8D /* Binding+Utils.swift */; };
 		43552D8E2653877700E97D8D /* Container.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43552D8D2653877700E97D8D /* Container.swift */; };
 		43552DAA2653B8CF00E97D8D /* Publisher+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43552DA92653B8CF00E97D8D /* Publisher+Utils.swift */; };
@@ -54,10 +56,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3FD51FEE2F6A056800A8C919 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		43552D7426535EC100E97D8D /* Binding+Utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Binding+Utils.swift"; sourceTree = "<group>"; };
 		43552D8D2653877700E97D8D /* Container.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Container.swift; sourceTree = "<group>"; };
 		43552DA92653B8CF00E97D8D /* Publisher+Utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Publisher+Utils.swift"; sourceTree = "<group>"; };
-		43736D7B2652280700CE4368 /* FitFoodie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FitFoodie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		43736D7B2652280700CE4368 /* Portio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Portio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43736D7E2652280700CE4368 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		43736D802652280700CE4368 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		43736D822652280700CE4368 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -68,7 +71,7 @@
 		43A601A326522DBA00B24B9D /* NetworkProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkProvider.swift; sourceTree = "<group>"; };
 		43A601A626522E0F00B24B9D /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		43A601B42652309900B24B9D /* NetworkUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkUtils.swift; sourceTree = "<group>"; };
-		43A601CA265267C000B24B9D /* FitFoodieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FitFoodieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		43A601CA265267C000B24B9D /* PortioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PortioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		43A601CC265267C000B24B9D /* SwiftUI_MVVM_CTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_MVVM_CTests.swift; sourceTree = "<group>"; };
 		43A601CE265267C000B24B9D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43A601D92652687F00B24B9D /* repos.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = repos.json; sourceTree = "<group>"; };
@@ -123,6 +126,7 @@
 		43736D722652280700CE4368 = {
 			isa = PBXGroup;
 			children = (
+				3FD51FEE2F6A056800A8C919 /* Assets.xcassets */,
 				43736D7D2652280700CE4368 /* SwiftUI-MVVM-C */,
 				43A601CB265267C000B24B9D /* SwiftUI-MVVM-CTests */,
 				43736D7C2652280700CE4368 /* Products */,
@@ -132,8 +136,8 @@
 		43736D7C2652280700CE4368 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				43736D7B2652280700CE4368 /* FitFoodie.app */,
-				43A601CA265267C000B24B9D /* FitFoodieTests.xctest */,
+				43736D7B2652280700CE4368 /* Portio.app */,
+				43A601CA265267C000B24B9D /* PortioTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -318,9 +322,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		43736D7A2652280700CE4368 /* FitFoodie */ = {
+		43736D7A2652280700CE4368 /* Portio */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "FitFoodie" */;
+			buildConfigurationList = 43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "Portio" */;
 			buildPhases = (
 				43736D772652280700CE4368 /* Sources */,
 				43736D782652280700CE4368 /* Frameworks */,
@@ -330,17 +334,17 @@
 			);
 			dependencies = (
 			);
-			name = FitFoodie;
+			name = Portio;
 			packageProductDependencies = (
 				43A6019D26522CFF00B24B9D /* Alamofire */,
 			);
 			productName = "SwiftUI-MVVM-C";
-			productReference = 43736D7B2652280700CE4368 /* FitFoodie.app */;
+			productReference = 43736D7B2652280700CE4368 /* Portio.app */;
 			productType = "com.apple.product-type.application";
 		};
-		43A601C9265267C000B24B9D /* FitFoodieTests */ = {
+		43A601C9265267C000B24B9D /* PortioTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "FitFoodieTests" */;
+			buildConfigurationList = 43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "PortioTests" */;
 			buildPhases = (
 				43A601C6265267C000B24B9D /* Sources */,
 				43A601C7265267C000B24B9D /* Frameworks */,
@@ -351,9 +355,9 @@
 			dependencies = (
 				43A601D0265267C000B24B9D /* PBXTargetDependency */,
 			);
-			name = FitFoodieTests;
+			name = PortioTests;
 			productName = "SwiftUI-MVVM-CTests";
-			productReference = 43A601CA265267C000B24B9D /* FitFoodieTests.xctest */;
+			productReference = 43A601CA265267C000B24B9D /* PortioTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -374,7 +378,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 43736D762652280700CE4368 /* Build configuration list for PBXProject "FitFoodie" */;
+			buildConfigurationList = 43736D762652280700CE4368 /* Build configuration list for PBXProject "Portio" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -390,8 +394,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				43736D7A2652280700CE4368 /* FitFoodie */,
-				43A601C9265267C000B24B9D /* FitFoodieTests */,
+				43736D7A2652280700CE4368 /* Portio */,
+				43A601C9265267C000B24B9D /* PortioTests */,
 			);
 		};
 /* End PBXProject section */
@@ -401,6 +405,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3FD51FF02F6A056800A8C919 /* Assets.xcassets in Resources */,
 				43736D8B2652280900CE4368 /* LaunchScreen.storyboard in Resources */,
 				43736D882652280900CE4368 /* Preview Assets.xcassets in Resources */,
 				43736D852652280900CE4368 /* Assets.xcassets in Resources */,
@@ -412,6 +417,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43A601DA2652687F00B24B9D /* repos.json in Resources */,
+				3FD51FEF2F6A056800A8C919 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -466,7 +472,7 @@
 /* Begin PBXTargetDependency section */
 		43A601D0265267C000B24B9D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 43736D7A2652280700CE4368 /* FitFoodie */;
+			target = 43736D7A2652280700CE4368 /* Portio */;
 			targetProxy = 43A601CF265267C000B24B9D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -606,9 +612,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftUI-MVVM-C/Preview Content\"";
-				DEVELOPMENT_TEAM = 94KKN3D4YS;
+				DEVELOPMENT_TEAM = NJHRTJAW6T;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "SwiftUI-MVVM-C/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Portio;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -627,9 +634,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftUI-MVVM-C/Preview Content\"";
-				DEVELOPMENT_TEAM = 94KKN3D4YS;
+				DEVELOPMENT_TEAM = NJHRTJAW6T;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "SwiftUI-MVVM-C/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Portio;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -657,7 +665,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitFoodie.app/FitFoodie";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Portio.app/Portio";
 			};
 			name = Debug;
 		};
@@ -677,14 +685,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitFoodie.app/FitFoodie";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Portio.app/Portio";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		43736D762652280700CE4368 /* Build configuration list for PBXProject "FitFoodie" */ = {
+		43736D762652280700CE4368 /* Build configuration list for PBXProject "Portio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43736D8D2652280900CE4368 /* Debug */,
@@ -693,7 +701,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "FitFoodie" */ = {
+		43736D8F2652280900CE4368 /* Build configuration list for PBXNativeTarget "Portio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43736D902652280900CE4368 /* Debug */,
@@ -702,7 +710,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "FitFoodieTests" */ = {
+		43A601D3265267C100B24B9D /* Build configuration list for PBXNativeTarget "PortioTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				43A601D1265267C000B24B9D /* Debug */,

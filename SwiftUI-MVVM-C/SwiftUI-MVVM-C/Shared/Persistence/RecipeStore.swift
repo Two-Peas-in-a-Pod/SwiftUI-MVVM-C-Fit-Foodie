@@ -15,7 +15,21 @@ struct RecipeStore {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Schema changed — delete the old store and retry so the app
+            // doesn't crash during development.  In production you'd use
+            // a VersionedSchema + SchemaMigrationPlan instead.
+            let storeURL = config.url
+            let base = storeURL.deletingPathExtension()
+            let ext = storeURL.pathExtension
+            for suffix in ["", "-wal", "-shm"] {
+                let url = base.appendingPathExtension(ext + suffix)
+                try? FileManager.default.removeItem(at: url)
+            }
+            do {
+                return try ModelContainer(for: schema, configurations: [config])
+            } catch {
+                fatalError("Could not create ModelContainer after resetting store: \(error)")
+            }
         }
     }()
 }
