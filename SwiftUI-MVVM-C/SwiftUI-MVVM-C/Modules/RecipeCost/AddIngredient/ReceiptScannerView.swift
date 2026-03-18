@@ -71,24 +71,28 @@ struct ReceiptScannerView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            ForEach(viewModel.scannedItems) { item in
-                Button {
-                    onSelectItem(item)
-                } label: {
-                    HStack {
-                        Text(item.name)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .leadingAlignment()
-                        Spacer()
-                        Text(String(format: "$%.2f", item.price))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(viewModel.scannedItems) { item in
+                        Button {
+                            onSelectItem(item)
+                        } label: {
+                            HStack {
+                                Text(item.name)
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                    .leadingAlignment()
+                                Spacer()
+                                Text(String(format: "$%.2f", item.price))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(8)
+                        }
                     }
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
                 }
             }
         }

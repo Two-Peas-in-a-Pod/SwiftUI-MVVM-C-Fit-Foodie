@@ -139,6 +139,15 @@ struct ReceiptScanner {
             }
             .sorted { $0.yMid > $1.yMid }
 
+        // Words that signal a non-item line in the price column (totals, tax, payment info).
+        let priceSectionNoiseWords = [
+            "total", "subtotal", "tax", "balance", "cash", "change",
+            "credit", "debit", "visa", "mastercard", "amex", "discover",
+            "promo", "discount", "savings", "saved", "less",
+            "auth", "approval", "tid:", "mid:", "contactless",
+            "purchase", "pay ", "amount", "receipt", "thank",
+        ]
+
         for obs in sorted {
             let text = obs.text
             let range = NSRange(text.startIndex..., in: text)
@@ -150,11 +159,23 @@ struct ReceiptScanner {
             let hasAnyPrice = !matches.isEmpty
 
             if isRightSide && hasAnyPrice {
-                // Price column: collect all positive item prices (< $500).
-                for match in matches {
-                    if let r = Range(match.range(at: 1), in: text), let price = Double(text[r]),
-                       price > 0, price < 500 {
-                        allPrices.append(price)
+                // Price column: process line-by-line so we can skip summary/discount/tax lines.
+                let priceLines = text.components(separatedBy: .newlines)
+                for line in priceLines {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { continue }
+                    let lower = trimmed.lowercased()
+                    // Skip lines whose label text reveals they aren't item prices.
+                    guard !priceSectionNoiseWords.contains(where: { lower.contains($0) }) else { continue }
+                    // Skip discount lines (negative amounts like "-$0.65").
+                    guard !trimmed.hasPrefix("-") else { continue }
+                    let lineRange = NSRange(trimmed.startIndex..., in: trimmed)
+                    let lineMatches = priceRegex.matches(in: trimmed, range: lineRange)
+                    for match in lineMatches {
+                        if let r = Range(match.range(at: 1), in: trimmed), let price = Double(trimmed[r]),
+                           price > 0, price < 500 {
+                            allPrices.append(price)
+                        }
                     }
                 }
             } else if !isRightSide && matches.isEmpty {
@@ -298,6 +319,11 @@ struct ReceiptScanner {
         // (e.g. "$2.60  $1.95  $3.25" — a price column mistakenly treated as a name)
         let letterCount = name.filter { $0.isLetter }.count
         if letterCount < 2 { return false }
+        // Reject zip codes and lines containing them (e.g. "MADISON, AL 35756")
+        if name.range(of: #"\b\d{5}\b"#, options: .regularExpression) != nil { return false }
+        // Reject street address-style names starting with a house/building number
+        // (e.g. "549 6TH ST,") — real item names very rarely begin with 3+ digits.
+        if name.range(of: #"^\d{3,}\s"#, options: .regularExpression) != nil { return false }
         return true
     }
 }
