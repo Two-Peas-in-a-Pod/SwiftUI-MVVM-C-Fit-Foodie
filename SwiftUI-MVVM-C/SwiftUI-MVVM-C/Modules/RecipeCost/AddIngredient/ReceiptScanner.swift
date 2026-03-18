@@ -127,7 +127,7 @@ struct ReceiptScanner {
         let sorted = observations
             .compactMap { obs -> (yMid: Double, text: String)? in
                 guard let text = obs.topCandidates(1).first?.string else { return nil }
-                return (obs.boundingBox.midY, text)
+                return (yMid: Double(obs.boundingBox.midY), text: text)
             }
             .sorted { $0.yMid > $1.yMid }
 
