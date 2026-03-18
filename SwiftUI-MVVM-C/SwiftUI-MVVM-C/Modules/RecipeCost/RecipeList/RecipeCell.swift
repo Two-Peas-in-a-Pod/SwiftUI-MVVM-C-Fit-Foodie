@@ -11,7 +11,7 @@ struct RecipeListCell: View {
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
 
     private var costResult: RecipeCostResult {
-        recipe.costResult(groceryTaxRate: salesTaxRate, alcoholTaxRate: alcoholTaxRate)
+        recipe.costResult(groceryTaxRate: salesTaxRate / 100.0, alcoholTaxRate: alcoholTaxRate / 100.0)
     }
 
     /// nil when no goal is set; otherwise green / orange / red
