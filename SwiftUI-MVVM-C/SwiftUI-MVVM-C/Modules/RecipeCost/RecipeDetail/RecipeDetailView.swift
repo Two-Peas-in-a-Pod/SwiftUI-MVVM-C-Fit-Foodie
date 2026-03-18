@@ -12,12 +12,16 @@ struct RecipeDetailView: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @State private var servingsText: String
+    @State private var goalText: String
     @State private var isAddingIngredient = false
     @State private var editingIngredient: Ingredient?
 
     init(recipe: Recipe) {
         _viewModel = StateObject(wrappedValue: RecipeDetailViewModel(recipe: recipe))
         _servingsText = State(initialValue: "\(recipe.servingsPerBatch)")
+        _goalText = State(initialValue: recipe.targetCostPerServing > 0
+            ? String(format: "%.2f", recipe.targetCostPerServing)
+            : "")
     }
 
     var body: some View {
@@ -25,6 +29,7 @@ struct RecipeDetailView: View {
             VStack(spacing: 20) {
                 costSummaryCard
                 servingsRow
+                costGoalRow
                 ingredientsList
             }
             .padding()
@@ -63,12 +68,37 @@ struct RecipeDetailView: View {
 
     // MARK: - Subviews
 
+    /// nil when no goal set; green / orange / red based on how close actual is to target
+    private var budgetIndicatorColor: Color? {
+        let target = viewModel.recipe.targetCostPerServing
+        guard target > 0 else { return nil }
+        let actual = viewModel.costResult.costPerServingWithTax
+        if actual <= target { return .green }
+        if actual <= target * 1.25 { return .orange }
+        return .red
+    }
+
     private var costSummaryCard: some View {
         VStack(spacing: 12) {
             HStack {
                 costItem(label: "Total Cost", value: viewModel.costResult.formattedTotalCost)
                 Divider()
-                costItem(label: "Per Serving", value: viewModel.costResult.formattedCostPerServing)
+                VStack(spacing: 4) {
+                    Text("Per Serving")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 5) {
+                        Text(viewModel.costResult.formattedCostPerServing)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        if let color = budgetIndicatorColor {
+                            Circle()
+                                .fill(color)
+                                .frame(width: 10, height: 10)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
             if viewModel.costResult.hasTax {
                 Divider()
@@ -135,6 +165,30 @@ struct RecipeDetailView: View {
                 .onChange(of: servingsText) { _, newValue in
                     viewModel.updateServings(newValue, in: modelContext)
                 }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private var costGoalRow: some View {
+        HStack {
+            Text("Cost goal per serving")
+                .font(.subheadline)
+            Spacer()
+            HStack(spacing: 4) {
+                Text("$")
+                    .foregroundColor(.secondary)
+                TextField("None", text: $goalText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 70)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onChange(of: goalText) { _, newValue in
+                        viewModel.recipe.targetCostPerServing = Double(newValue) ?? 0
+                        try? modelContext.save()
+                    }
+            }
         }
         .padding()
         .background(Color(.secondarySystemBackground))

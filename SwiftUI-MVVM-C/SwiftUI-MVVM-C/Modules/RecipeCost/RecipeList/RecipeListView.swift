@@ -11,17 +11,25 @@ struct RecipeListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isAddingRecipe = false
     @State private var isShowingSettings = false
+    @State private var searchText = ""
+
+    private var filteredRecipes: [Recipe] {
+        searchText.isEmpty ? recipes : recipes.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(recipes) { recipe in
+                ForEach(filteredRecipes) { recipe in
                     NavigationLink(value: recipe) {
                         RecipeListCell(recipe: recipe)
                     }
                 }
                 .onDelete(perform: deleteRecipes)
             }
+            .searchable(text: $searchText, prompt: "Search recipes")
             .navigationTitle("Recipes")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -51,13 +59,15 @@ struct RecipeListView: View {
                         systemImage: "fork.knife",
                         description: Text("Tap + to add your first recipe.")
                     )
+                } else if filteredRecipes.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 }
             }
         }
     }
 
     private func deleteRecipes(at offsets: IndexSet) {
-        offsets.map { recipes[$0] }.forEach { modelContext.delete($0) }
+        offsets.map { filteredRecipes[$0] }.forEach { modelContext.delete($0) }
         try? modelContext.save()
     }
 }

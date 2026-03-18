@@ -11,6 +11,7 @@ class Recipe {
     var id: UUID
     var name: String
     var servingsPerBatch: Int
+    var targetCostPerServing: Double = 0
     @Relationship(deleteRule: .cascade, inverse: \Ingredient.recipe)
     var ingredients: [Ingredient]
 
@@ -18,11 +19,13 @@ class Recipe {
         id: UUID = UUID(),
         name: String,
         servingsPerBatch: Int = 1,
+        targetCostPerServing: Double = 0,
         ingredients: [Ingredient] = []
     ) {
         self.id = id
         self.name = name
         self.servingsPerBatch = servingsPerBatch
+        self.targetCostPerServing = targetCostPerServing
         self.ingredients = ingredients
     }
 
