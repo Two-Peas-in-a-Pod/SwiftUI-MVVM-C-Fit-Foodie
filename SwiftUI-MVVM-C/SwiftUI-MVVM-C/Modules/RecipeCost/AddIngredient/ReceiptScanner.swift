@@ -52,10 +52,16 @@ struct ReceiptScanner {
             var items = parseLineItems(from: reconstructed)
 
             // Strategy 2: Vision sometimes returns entire columns as a single observation
-            // (all item names as one block, all prices as another). In that case strategy 1
-            // produces no results, so fall back to pairing name-column and price-column blocks.
+            // (all item names as one block, all prices as another). Uses x-position to
+            // classify each observation as a name or price column, then pairs them in order.
             if items.isEmpty {
                 items = parseFromColumnBlocks(observations: observations)
+            }
+
+            // Strategy 3: Vision sometimes returns each item as two separate per-row
+            // observations (name on left, price on right). Pair them by Y proximity.
+            if items.isEmpty {
+                items = pairByYProximity(observations: observations)
             }
 
             DispatchQueue.main.async {
@@ -111,23 +117,25 @@ struct ReceiptScanner {
         }
     }
 
-    // MARK: - Strategy 2: Column block pairing
+    // MARK: - Strategy 2: Column block pairing (x-position aware)
 
     /// Used when Vision treats the item-name column and price column as separate multi-line
-    /// observations. Identifies observations that are price-heavy (≥ 3 prices) and pairs
-    /// them with the item names extracted from the remaining observations.
+    /// observations. Uses the horizontal midpoint of each observation to classify it as a
+    /// name column (left side) or price column (right side), then pairs them in vertical order.
     private static func parseFromColumnBlocks(observations: [VNRecognizedTextObservation]) -> [ReceiptLineItem] {
         guard !observations.isEmpty else { return [] }
-        guard let priceRegex = try? NSRegularExpression(pattern: #"\$?(\d+\.\d{2})"#) else { return [] }
+        guard let priceRegex = try? NSRegularExpression(pattern: #"-?\$?(\d+\.\d{2})"#) else { return [] }
 
         var allPrices: [Double] = []
         var allNames: [String] = []
 
         // Process observations top-to-bottom so names and prices stay in the same order.
         let sorted = observations
-            .compactMap { obs -> (yMid: Double, text: String)? in
+            .compactMap { obs -> (yMid: Double, xMid: Double, text: String)? in
                 guard let text = obs.topCandidates(1).first?.string else { return nil }
-                return (yMid: Double(obs.boundingBox.midY), text: text)
+                return (yMid: Double(obs.boundingBox.midY),
+                        xMid: Double(obs.boundingBox.midX),
+                        text: text)
             }
             .sorted { $0.yMid > $1.yMid }
 
@@ -136,34 +144,97 @@ struct ReceiptScanner {
             let range = NSRange(text.startIndex..., in: text)
             let matches = priceRegex.matches(in: text, range: range)
 
-            if matches.count >= 3 {
-                // Price-column block: collect all individual item prices (skip totals/tax by
-                // deferring filtering to the pairing step — excess prices just won't be paired).
+            // Right-side observations (midX > 0.55) that contain at least one price are
+            // the price column, regardless of how many prices they have.
+            let isRightSide = obs.xMid > 0.55
+            let hasAnyPrice = !matches.isEmpty
+
+            if isRightSide && hasAnyPrice {
+                // Price column: collect all positive item prices (< $500).
                 for match in matches {
                     if let r = Range(match.range(at: 1), in: text), let price = Double(text[r]),
                        price > 0, price < 500 {
                         allPrices.append(price)
                     }
                 }
-            } else if matches.isEmpty {
-                // Name-column block: split by newlines and clean each candidate.
+            } else if !isRightSide && matches.isEmpty {
+                // Name column: split by newlines and clean each candidate.
                 let lines = text
                     .components(separatedBy: .newlines)
                     .map { cleanItemName($0) }
                     .filter { isPlausibleItemName($0) }
                 allNames.append(contentsOf: lines)
             }
-            // Observations with 1–2 prices are ambiguous (could be subtotal lines);
-            // skip them to avoid polluting either list.
         }
 
-        // Pair names with prices in order. Any excess prices (totals, tax) at the end
-        // are ignored because min() stops at the shorter list.
+        // Pair names with prices in order. Any excess prices (totals, tax) are ignored.
         var items: [ReceiptLineItem] = []
         for i in 0..<min(allNames.count, allPrices.count) {
             items.append(ReceiptLineItem(name: allNames[i], price: allPrices[i]))
         }
         return items
+    }
+
+    // MARK: - Strategy 3: Y-proximity pairing
+
+    /// Used when Vision returns each receipt row as two separate observations — one for the
+    /// item name (left-aligned) and one for the price (right-aligned). Matches each pure-price
+    /// observation with the closest name observation at a similar vertical position.
+    private static func pairByYProximity(observations: [VNRecognizedTextObservation]) -> [ReceiptLineItem] {
+        guard let purePriceRegex = try? NSRegularExpression(pattern: #"^-?\$?\s*(\d+\.\d{2})\s*$"#) else { return [] }
+
+        typealias NameEntry  = (yMid: Double, text: String)
+        typealias PriceEntry = (yMid: Double, price: Double)
+
+        var nameEntries:  [NameEntry]  = []
+        var priceEntries: [PriceEntry] = []
+
+        for obs in observations {
+            guard let raw = obs.topCandidates(1).first?.string else { continue }
+            let text = raw.trimmingCharacters(in: .whitespaces)
+            let yMid = obs.boundingBox.midY
+            let range = NSRange(text.startIndex..., in: text)
+
+            if let match = purePriceRegex.firstMatch(in: text, range: range),
+               let priceRange = Range(match.range(at: 1), in: text),
+               let price = Double(text[priceRange]),
+               price > 0, price < 500 {
+                priceEntries.append((yMid, price))
+            } else {
+                let name = cleanItemName(text)
+                if isPlausibleItemName(name) {
+                    nameEntries.append((yMid, name))
+                }
+            }
+        }
+
+        guard !priceEntries.isEmpty, !nameEntries.isEmpty else { return [] }
+
+        // For each price, find the nearest unused name within a 4 % Y window.
+        var usedNames = Set<Int>()
+        var pairs: [(yMid: Double, item: ReceiptLineItem)] = []
+
+        for priceEntry in priceEntries.sorted(by: { $0.yMid > $1.yMid }) {
+            var bestIdx: Int?
+            var bestDist = Double.infinity
+            for (i, nameEntry) in nameEntries.enumerated() {
+                guard !usedNames.contains(i) else { continue }
+                let dist = abs(nameEntry.yMid - priceEntry.yMid)
+                if dist < bestDist && dist < 0.04 {
+                    bestDist = dist
+                    bestIdx = i
+                }
+            }
+            if let idx = bestIdx {
+                usedNames.insert(idx)
+                pairs.append((
+                    yMid: priceEntry.yMid,
+                    item: ReceiptLineItem(name: nameEntries[idx].text, price: priceEntry.price)
+                ))
+            }
+        }
+
+        return pairs.sorted { $0.yMid > $1.yMid }.map { $0.item }
     }
 
     // MARK: - Line-item parsing (used by strategy 1)
@@ -203,6 +274,8 @@ struct ReceiptScanner {
         }
         // Remove trailing barcodes (6 or more consecutive digits at end of string)
         s = s.replacingOccurrences(of: #"\s+\d{6,}\s*$"#, with: "", options: .regularExpression)
+        // Remove trailing price if present (can happen in column-block observations)
+        s = s.replacingOccurrences(of: #"\s+-?\$?\d+\.\d{2}\s*$"#, with: "", options: .regularExpression)
         return s.trimmingCharacters(in: .whitespaces)
     }
 
@@ -219,9 +292,12 @@ struct ReceiptScanner {
             "auth", "approval", "tid:", "mid:", "contactless",
         ]
         if skipWords.contains(where: { lower.contains($0) }) { return false }
-        // Skip lines that are mostly digits and punctuation (phone numbers, barcodes, addresses)
-        let nonDigitCount = name.filter { !$0.isNumber && !$0.isPunctuation && !$0.isWhitespace }.count
-        if nonDigitCount < 2 { return false }
+        // Reject strings that are purely a price value (e.g. "$2.60" or "2.60")
+        if name.range(of: #"^-?\$?\s*\d+\.\d{2}\s*$"#, options: .regularExpression) != nil { return false }
+        // Reject strings where the only non-digit content is dollar signs and decimal points
+        // (e.g. "$2.60  $1.95  $3.25" — a price column mistakenly treated as a name)
+        let letterCount = name.filter { $0.isLetter }.count
+        if letterCount < 2 { return false }
         return true
     }
 }
