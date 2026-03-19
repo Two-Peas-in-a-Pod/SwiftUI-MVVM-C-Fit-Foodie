@@ -116,7 +116,7 @@ private struct CostSettingsSheet: View {
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @AppStorage("krogerClientId") private var krogerClientId: String = ""
     @AppStorage("krogerClientSecret") private var krogerClientSecret: String = ""
-    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = true
+    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     @State private var groceryTaxText = ""

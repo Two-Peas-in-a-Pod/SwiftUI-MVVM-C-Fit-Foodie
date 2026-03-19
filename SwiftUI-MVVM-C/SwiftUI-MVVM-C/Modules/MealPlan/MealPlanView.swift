@@ -17,22 +17,28 @@ struct MealPlanView: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @AppStorage("weeklyMealBudget") private var weeklyBudget: Double = 0
+    @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
 
     @State private var weekStart: Date = Date().startOfWeek
     @State private var pickingDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
+    @State private var isShowingCalendarPicker = false
 
     @StateObject private var calendarService = MealPlanCalendarService.shared
 
-    // Entries for the currently displayed week
+    // MARK: - Derived state
+
     private var weekEntries: [MealPlanEntry] {
         allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart) }
     }
 
-    // Total cost of all assigned meals this week (with tax)
+    private var assignedEntries: [MealPlanEntry] {
+        weekEntries.filter { $0.recipe != nil }
+    }
+
     private var weekTotalCost: Double {
-        weekEntries.compactMap { $0.recipe }.reduce(0) { sum, recipe in
+        assignedEntries.compactMap { $0.recipe }.reduce(0) { sum, recipe in
             sum + recipe.costResult(groceryTaxRate: salesTaxRate, alcoholTaxRate: alcoholTaxRate).totalWithTax
         }
     }
@@ -43,6 +49,8 @@ struct MealPlanView: View {
         fmt.dateFormat = "MMM d"
         return "\(fmt.string(from: weekStart)) – \(fmt.string(from: end))"
     }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -62,6 +70,13 @@ struct MealPlanView: View {
                     removeMeal(fromDayOffset: wrapper.value)
                 } currentRecipe: {
                     entry(for: wrapper.value)?.recipe
+                }
+            }
+            .sheet(isPresented: $isShowingCalendarPicker) {
+                CalendarPickerSheet(
+                    preferredCalendarId: preferredCalendarId
+                ) { calendar in
+                    exportWeekToCalendar(calendar)
                 }
             }
         }
@@ -155,7 +170,6 @@ struct MealPlanView: View {
                     }
                 }
 
-                // Progress bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4)
@@ -171,6 +185,19 @@ struct MealPlanView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !assignedEntries.isEmpty {
+                Divider()
+                Button {
+                    Task { await requestAndShowCalendarPicker() }
+                } label: {
+                    Label("Add to Calendar", systemImage: "calendar.badge.plus")
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
             }
         }
         .padding()
@@ -197,7 +224,6 @@ struct MealPlanView: View {
             pickingDay = IdentifiableInt(value: offset)
         } label: {
             HStack(spacing: 12) {
-                // Day label
                 VStack(spacing: 2) {
                     Text(String(dayName.prefix(3)).uppercased())
                         .font(.caption2)
@@ -245,18 +271,14 @@ struct MealPlanView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Helpers
+    // MARK: - Meal assignment
 
     private func entry(for dayOffset: Int) -> MealPlanEntry? {
         weekEntries.first { $0.dayOffset == dayOffset }
     }
 
     private func assignMeal(_ recipe: Recipe, toDayOffset offset: Int) {
-        let calendarService = MealPlanCalendarService.shared
-        let date = Calendar.current.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
-
         if let existing = entry(for: offset) {
-            // Remove old calendar event if we stored one
             if let oldId = existing.calendarEventId {
                 try? calendarService.removeEvent(identifier: oldId)
             }
@@ -267,40 +289,46 @@ struct MealPlanView: View {
             modelContext.insert(newEntry)
         }
         try? modelContext.save()
-
-        // Offer calendar integration
-        Task {
-            await addToCalendarIfAllowed(recipeName: recipe.name, date: date, dayOffset: offset)
-        }
     }
 
     private func removeMeal(fromDayOffset offset: Int) {
         guard let existing = entry(for: offset) else { return }
         if let oldId = existing.calendarEventId {
-            try? MealPlanCalendarService.shared.removeEvent(identifier: oldId)
+            try? calendarService.removeEvent(identifier: oldId)
         }
         modelContext.delete(existing)
         try? modelContext.save()
     }
 
-    private func addToCalendarIfAllowed(recipeName: String, date: Date, dayOffset: Int) async {
-        let status = calendarService.authorizationStatus
-        let hasAccess: Bool
-        if status == .notDetermined {
-            hasAccess = await calendarService.requestAccess()
-        } else {
-            hasAccess = calendarService.isAuthorized
+    // MARK: - Calendar export
+
+    private func requestAndShowCalendarPicker() async {
+        if !calendarService.isAuthorized {
+            guard await calendarService.requestAccess() else { return }
         }
-        guard hasAccess else { return }
-        if let eventId = try? calendarService.addMeal(name: recipeName, on: date),
-           let existing = entry(for: dayOffset) {
-            existing.calendarEventId = eventId
-            try? modelContext.save()
+        isShowingCalendarPicker = true
+    }
+
+    private func exportWeekToCalendar(_ calendar: EKCalendar) {
+        preferredCalendarId = calendar.calendarIdentifier
+
+        for entry in assignedEntries {
+            guard let recipe = entry.recipe else { continue }
+            // Remove any previously exported event for this entry first.
+            if let oldId = entry.calendarEventId {
+                try? calendarService.removeEvent(identifier: oldId)
+                entry.calendarEventId = nil
+            }
+            if let eventId = try? calendarService.addMeal(name: recipe.name, on: entry.date, to: calendar) {
+                entry.calendarEventId = eventId
+            }
         }
+        try? modelContext.save()
     }
 }
 
-// Thin Identifiable wrapper so we can use .sheet(item:) with an Int day offset.
+// MARK: - Identifiable Int wrapper
+
 private struct IdentifiableInt: Identifiable {
     let value: Int
     var id: Int { value }
@@ -351,7 +379,8 @@ private struct RecipePickerSheet: View {
                                     Text(recipe.name)
                                         .foregroundColor(.primary)
                                         .font(.subheadline)
-                                    Text(String(format: "$%.2f total · %d servings", recipe.totalCost, recipe.servingsPerBatch))
+                                    Text(String(format: "$%.2f total · %d servings",
+                                                recipe.totalCost, recipe.servingsPerBatch))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -365,5 +394,76 @@ private struct RecipePickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(trailing: Button("Cancel") { dismiss() })
         }
+    }
+}
+
+// MARK: - Calendar picker sheet
+
+private struct CalendarPickerSheet: View {
+    let preferredCalendarId: String
+    let onSelect: (EKCalendar) -> Void
+
+    @StateObject private var service = MealPlanCalendarService.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var calendars: [EKCalendar] = []
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if calendars.isEmpty {
+                    ProgressView("Loading calendars…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        // Group calendars by their source (account) name
+                        ForEach(sources, id: \.self) { source in
+                            Section(header: Text(source)) {
+                                ForEach(calendarsFor(source: source), id: \.calendarIdentifier) { cal in
+                                    calendarRow(cal)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Add to Calendar")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Cancel") { dismiss() })
+            .task {
+                if !service.isAuthorized {
+                    _ = await service.requestAccess()
+                }
+                calendars = service.availableCalendars()
+            }
+        }
+    }
+
+    private func calendarRow(_ cal: EKCalendar) -> some View {
+        Button {
+            onSelect(cal)
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color(cgColor: cal.cgColor))
+                    .frame(width: 12, height: 12)
+                Text(cal.title)
+                    .foregroundColor(.primary)
+                Spacer()
+                if cal.calendarIdentifier == preferredCalendarId {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.accentColor)
+                        .font(.subheadline)
+                }
+            }
+        }
+    }
+
+    private var sources: [String] {
+        Array(Set(calendars.map { $0.source.title })).sorted()
+    }
+
+    private func calendarsFor(source: String) -> [EKCalendar] {
+        calendars.filter { $0.source.title == source }
     }
 }

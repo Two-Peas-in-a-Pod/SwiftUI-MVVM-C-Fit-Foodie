@@ -11,7 +11,7 @@ struct RecipeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
-    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = true
+    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = false
     @State private var servingsText: String
     @State private var goalText: String
     @State private var isAddingIngredient = false

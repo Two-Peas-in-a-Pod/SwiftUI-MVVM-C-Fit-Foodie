@@ -7,17 +7,15 @@ import EventKit
 import Foundation
 
 /// Manages adding meal plan entries to the user's iOS Calendar.
-/// Uses a dedicated "Meal Plan" calendar so events are easy to find and remove.
 @MainActor
 final class MealPlanCalendarService: ObservableObject {
     static let shared = MealPlanCalendarService()
 
     private let store = EKEventStore()
-    private let calendarName = "Meal Plan"
 
     // MARK: - Authorization
 
-    /// Requests full calendar write access. Returns true if granted.
+    /// Requests calendar write access. Returns true if granted.
     func requestAccess() async -> Bool {
         if #available(iOS 17, *) {
             do {
@@ -47,13 +45,30 @@ final class MealPlanCalendarService: ObservableObject {
         }
     }
 
+    // MARK: - Calendar list
+
+    /// Returns all writable event calendars, sorted by source title then calendar title.
+    func availableCalendars() -> [EKCalendar] {
+        store.calendars(for: .event)
+            .filter { $0.allowsContentModifications }
+            .sorted {
+                let s = $0.source.title.localizedCompare($1.source.title)
+                return s == .orderedSame ? $0.title < $1.title : s == .orderedAscending
+            }
+    }
+
+    /// Returns the calendar matching a stored identifier, or nil if not found.
+    func calendar(for identifier: String) -> EKCalendar? {
+        guard !identifier.isEmpty else { return nil }
+        return store.calendars(for: .event).first { $0.calendarIdentifier == identifier }
+    }
+
     // MARK: - Add / Remove Events
 
-    /// Adds an all-day event for `mealName` on `date` to the Meal Plan calendar.
+    /// Adds an all-day event for `mealName` on `date` to the given calendar.
     /// Returns the event identifier so it can be stored for later removal.
     @discardableResult
-    func addMeal(name mealName: String, on date: Date) throws -> String {
-        let calendar = try findOrCreateCalendar()
+    func addMeal(name mealName: String, on date: Date, to calendar: EKCalendar) throws -> String {
         let event = EKEvent(eventStore: store)
         event.title = mealName
         event.isAllDay = true
@@ -70,32 +85,5 @@ final class MealPlanCalendarService: ObservableObject {
         if let event = store.event(withIdentifier: identifier) {
             try store.remove(event, span: .thisEvent)
         }
-    }
-
-    // MARK: - Private
-
-    private func findOrCreateCalendar() throws -> EKCalendar {
-        // Re-use an existing calendar with the same name if possible.
-        if let existing = store.calendars(for: .event).first(where: { $0.title == calendarName }) {
-            return existing
-        }
-        let cal = EKCalendar(for: .event, eventStore: store)
-        cal.title = calendarName
-        // Use the default calendar source (iCloud or local).
-        cal.source = bestSource()
-        try store.saveCalendar(cal, commit: true)
-        return cal
-    }
-
-    private func bestSource() -> EKSource {
-        // Prefer iCloud so the calendar syncs across devices.
-        if let icloud = store.sources.first(where: { $0.sourceType == .calDAV && $0.title == "iCloud" }) {
-            return icloud
-        }
-        if let calDAV = store.sources.first(where: { $0.sourceType == .calDAV }) {
-            return calDAV
-        }
-        // Fall back to the local source.
-        return store.sources.first(where: { $0.sourceType == .local }) ?? store.sources[0]
     }
 }
