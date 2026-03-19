@@ -10,7 +10,16 @@ import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        RecipeListView()
-            .modelContainer(RecipeStore.shared)
+        TabView {
+            RecipeListView()
+                .tabItem {
+                    Label("Recipes", systemImage: "fork.knife")
+                }
+            MealPlanView()
+                .tabItem {
+                    Label("Meal Plan", systemImage: "calendar")
+                }
+        }
+        .modelContainer(RecipeStore.shared)
     }
 }

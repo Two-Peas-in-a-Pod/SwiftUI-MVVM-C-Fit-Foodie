@@ -116,6 +116,7 @@ private struct CostSettingsSheet: View {
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @AppStorage("krogerClientId") private var krogerClientId: String = ""
     @AppStorage("krogerClientSecret") private var krogerClientSecret: String = ""
+    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     @State private var groceryTaxText = ""
@@ -148,6 +149,13 @@ private struct CostSettingsSheet: View {
                         Text("%")
                             .foregroundColor(.secondary)
                     }
+                }
+
+                Section(
+                    header: Text("Recipe Features"),
+                    footer: Text("When enabled, you can set a target cost per serving on each recipe and see a color indicator showing how close you are to your goal.")
+                ) {
+                    Toggle("Cost Goal per Serving", isOn: $costGoalEnabled)
                 }
 
                 Section(

@@ -11,6 +11,7 @@ struct RecipeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
+    @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = true
     @State private var servingsText: String
     @State private var goalText: String
     @State private var isAddingIngredient = false
@@ -29,7 +30,9 @@ struct RecipeDetailView: View {
             VStack(spacing: 20) {
                 costSummaryCard
                 servingsRow
-                costGoalRow
+                if costGoalEnabled {
+                    costGoalRow
+                }
                 ingredientsList
             }
             .padding()
@@ -68,8 +71,9 @@ struct RecipeDetailView: View {
 
     // MARK: - Subviews
 
-    /// nil when no goal set; green / orange / red based on how close actual is to target
+    /// nil when cost goal is disabled, no goal set, or feature is turned off in settings.
     private var budgetIndicatorColor: Color? {
+        guard costGoalEnabled else { return nil }
         let target = viewModel.recipe.targetCostPerServing
         guard target > 0 else { return nil }
         let actual = viewModel.costResult.costPerServingWithTax
