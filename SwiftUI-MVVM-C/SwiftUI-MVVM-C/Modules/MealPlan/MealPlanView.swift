@@ -39,7 +39,7 @@ struct MealPlanView: View {
 
     private var weekTotalCost: Double {
         assignedEntries.compactMap { $0.recipe }.reduce(0) { sum, recipe in
-            sum + recipe.costResult(groceryTaxRate: salesTaxRate, alcoholTaxRate: alcoholTaxRate).totalWithTax
+            sum + recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100).totalWithTax
         }
     }
 
@@ -244,7 +244,7 @@ struct MealPlanView: View {
                             .fontWeight(.medium)
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        let cost = recipe.costResult(groceryTaxRate: salesTaxRate, alcoholTaxRate: alcoholTaxRate)
+                        let cost = recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
                         Text(cost.formattedTotalCost)
                             .font(.caption)
                             .foregroundColor(.secondary)
