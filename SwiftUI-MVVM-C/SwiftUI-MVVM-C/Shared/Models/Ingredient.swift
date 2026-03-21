@@ -52,13 +52,20 @@ class Ingredient {
         let purchaseCat = Self.unitCategory(purchaseUnit)
         let recipeCat = Self.unitCategory(recipeUnit)
         if purchaseCat == recipeCat && purchaseCat != "count" {
+            // Same dimensional category (both weight or both volume) — convert to base
+            // unit first so mixed units like lb/oz or L/ml work correctly.
             let purchaseBase = Self.toBaseUnit(purchaseQuantity, unit: purchaseUnit)
             let recipeBase = Self.toBaseUnit(recipeQuantity, unit: recipeUnit)
             guard purchaseBase > 0 else { return 0 }
             return purchaseCost * (recipeBase / purchaseBase)
         }
-        // Same unit or incompatible categories — fall back to raw ratio
-        return purchaseCost * (recipeQuantity / purchaseQuantity)
+        // Either both "count", or incompatible categories (e.g. "1 pack" vs "200 g").
+        // Use the raw ratio but clamp it to [0, 1]: you can't use more than 100 % of
+        // a single purchase in one batch, and the ratio would otherwise explode when
+        // purchaseQuantity is 1 (a single package) but recipeQuantity is a large number
+        // in a different unit system (grams, ml, etc.).
+        let ratio = recipeQuantity / purchaseQuantity
+        return purchaseCost * min(ratio, 1.0)
     }
 
     private static func unitCategory(_ unit: String) -> String {
