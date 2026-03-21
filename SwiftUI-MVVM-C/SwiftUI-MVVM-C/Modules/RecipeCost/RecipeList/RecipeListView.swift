@@ -118,6 +118,7 @@ private struct CostSettingsSheet: View {
     @AppStorage("krogerClientId") private var krogerClientId: String = ""
     @AppStorage("krogerClientSecret") private var krogerClientSecret: String = ""
     @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = false
+    @AppStorage("weeklyBudgetEnabled") private var weeklyBudgetEnabled: Bool = false
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -163,7 +164,11 @@ private struct CostSettingsSheet: View {
                     Toggle("Cost Goal per Serving", isOn: $costGoalEnabled)
                 }
 
-                Section(header: Text("Meal Plan")) {
+                Section(
+                    header: Text("Meal Plan"),
+                    footer: Text("Track your weekly meal spending against a budget.")
+                ) {
+                    Toggle("Weekly Budget", isOn: $weeklyBudgetEnabled)
                     HStack {
                         Text("Calendar")
                         Spacer()

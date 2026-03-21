@@ -18,6 +18,9 @@ class MealPlanEntry {
     var recipe: Recipe?
     /// EKEvent identifier stored so the calendar event can be removed when the meal is changed.
     var calendarEventId: String?
+    /// UUIDs (as strings) of ingredients the user already has on hand this week.
+    /// These are excluded from the "buy cost" used in budget calculations.
+    var onHandIngredientIds: [String] = []
 
     init(weekStartDate: Date, dayOffset: Int, recipe: Recipe? = nil) {
         self.id = UUID()
@@ -25,6 +28,7 @@ class MealPlanEntry {
         self.dayOffset = dayOffset
         self.recipe = recipe
         self.calendarEventId = nil
+        self.onHandIngredientIds = []
     }
 
     /// The calendar date this entry falls on.

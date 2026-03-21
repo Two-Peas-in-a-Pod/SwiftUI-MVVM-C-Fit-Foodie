@@ -17,10 +17,12 @@ struct MealPlanView: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @AppStorage("weeklyMealBudget") private var weeklyBudget: Double = 0
+    @AppStorage("weeklyBudgetEnabled") private var weeklyBudgetEnabled: Bool = false
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
 
     @State private var weekStart: Date = Date().startOfWeek
     @State private var pickingDay: IdentifiableInt? = nil
+    @State private var onHandDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
     @State private var isShowingCalendarPicker = false
@@ -38,8 +40,13 @@ struct MealPlanView: View {
     }
 
     private var weekTotalCost: Double {
-        assignedEntries.compactMap { $0.recipe }.reduce(0) { sum, recipe in
-            sum + recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100).totalWithTax
+        assignedEntries.reduce(0) { sum, entry in
+            guard let recipe = entry.recipe else { return sum }
+            return sum + recipe.costResult(
+                onHandIds: Set(entry.onHandIngredientIds),
+                groceryTaxRate: salesTaxRate / 100,
+                alcoholTaxRate: alcoholTaxRate / 100
+            ).totalWithTax
         }
     }
 
@@ -70,6 +77,13 @@ struct MealPlanView: View {
                     removeMeal(fromDayOffset: wrapper.value)
                 } currentRecipe: {
                     entry(for: wrapper.value)?.recipe
+                }
+            }
+            .sheet(item: $onHandDay) { wrapper in
+                if let e = entry(for: wrapper.value), let recipe = e.recipe {
+                    OnHandPickerSheet(entry: e, recipe: recipe) {
+                        try? modelContext.save()
+                    }
                 }
             }
             .sheet(isPresented: $isShowingCalendarPicker) {
@@ -113,39 +127,41 @@ struct MealPlanView: View {
     private var budgetCard: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Weekly Budget")
+                Text(weeklyBudgetEnabled ? "Weekly Budget" : "This Week")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Spacer()
-                if isEditingBudget {
-                    HStack(spacing: 4) {
-                        Text("$").foregroundColor(.secondary)
-                        TextField("e.g. 150", text: $budgetText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        Button("Done") {
-                            weeklyBudget = Double(budgetText) ?? weeklyBudget
-                            isEditingBudget = false
-                        }
-                        .font(.subheadline)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                } else {
-                    Button {
-                        budgetText = weeklyBudget > 0 ? String(format: "%g", weeklyBudget) : ""
-                        isEditingBudget = true
-                    } label: {
-                        Text(weeklyBudget > 0 ? String(format: "$%.2f", weeklyBudget) : "Set budget")
+                if weeklyBudgetEnabled {
+                    if isEditingBudget {
+                        HStack(spacing: 4) {
+                            Text("$").foregroundColor(.secondary)
+                            TextField("e.g. 150", text: $budgetText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            Button("Done") {
+                                weeklyBudget = Double(budgetText) ?? weeklyBudget
+                                isEditingBudget = false
+                            }
                             .font(.subheadline)
-                            .foregroundColor(weeklyBudget > 0 ? .primary : .accentColor)
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                    } else {
+                        Button {
+                            budgetText = weeklyBudget > 0 ? String(format: "%g", weeklyBudget) : ""
+                            isEditingBudget = true
+                        } label: {
+                            Text(weeklyBudget > 0 ? String(format: "$%.2f", weeklyBudget) : "Set budget")
+                                .font(.subheadline)
+                                .foregroundColor(weeklyBudget > 0 ? .primary : .accentColor)
+                        }
                     }
                 }
             }
 
-            if weeklyBudget > 0 {
+            if weeklyBudgetEnabled && weeklyBudget > 0 {
                 let remaining = weeklyBudget - weekTotalCost
                 let overBudget = remaining < 0
 
@@ -238,16 +254,33 @@ struct MealPlanView: View {
                 Divider().frame(height: 36)
 
                 if let recipe = assignedRecipe {
+                    let assignedEntry = entry(for: offset)
+                    let onHandIds = Set(assignedEntry?.onHandIngredientIds ?? [])
+                    let buyCost = recipe.costResult(onHandIds: onHandIds, groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
+                    let fullCost = onHandIds.isEmpty ? buyCost : recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(recipe.name)
                             .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        let cost = recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
-                        Text(cost.formattedTotalCost)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        if onHandIds.isEmpty {
+                            Text(buyCost.formattedTotalCost)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            HStack(spacing: 4) {
+                                Text(buyCost.formattedTotalCost + " to buy")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("·")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(fullCost.formattedTotalCost + " full")
+                                    .font(.caption)
+                                    .foregroundColor(Color(.tertiaryLabel))
+                            }
+                        }
                     }
                 } else {
                     Text("No meal planned")
@@ -256,6 +289,16 @@ struct MealPlanView: View {
                 }
 
                 Spacer()
+                if assignedRecipe != nil {
+                    Button {
+                        onHandDay = IdentifiableInt(value: offset)
+                    } label: {
+                        Image(systemName: "checklist")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
                 Image(systemName: assignedRecipe == nil ? "plus.circle" : "chevron.right")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -486,5 +529,69 @@ struct CalendarPickerSheet: View {
 
     private func calendarsFor(source: String) -> [EKCalendar] {
         calendars.filter { $0.source.title == source }
+    }
+}
+
+// MARK: - On-hand ingredient picker sheet
+
+private struct OnHandPickerSheet: View {
+    let entry: MealPlanEntry
+    let recipe: Recipe
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            List(recipe.ingredients) { ingredient in
+                let isOnHand = entry.onHandIngredientIds.contains(ingredient.id.uuidString)
+                Button {
+                    toggle(ingredient)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: isOnHand ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(isOnHand ? .accentColor : .secondary)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ingredient.name)
+                                .foregroundColor(.primary)
+                                .font(.subheadline)
+                            Text(String(format: "%g %@ · $%.2f",
+                                        ingredient.recipeQuantity,
+                                        ingredient.recipeUnit,
+                                        ingredient.costContribution))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if isOnHand {
+                            Text("on hand")
+                                .font(.caption2)
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.12))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationTitle("What I Already Have")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Done") {
+                onSave()
+                dismiss()
+            })
+        }
+    }
+
+    private func toggle(_ ingredient: Ingredient) {
+        let idStr = ingredient.id.uuidString
+        if let idx = entry.onHandIngredientIds.firstIndex(of: idStr) {
+            entry.onHandIngredientIds.remove(at: idx)
+        } else {
+            entry.onHandIngredientIds.append(idStr)
+        }
     }
 }

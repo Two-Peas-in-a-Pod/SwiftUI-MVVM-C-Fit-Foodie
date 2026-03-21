@@ -41,14 +41,22 @@ struct RecipeCostResult {
 
 extension Recipe {
     func costResult(groceryTaxRate: Double = 0, alcoholTaxRate: Double = 0) -> RecipeCostResult {
-        let groceryCost = ingredients.filter { !$0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
-        let alcoholCost = ingredients.filter { $0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
+        costResult(onHandIds: [], groceryTaxRate: groceryTaxRate, alcoholTaxRate: alcoholTaxRate)
+    }
+
+    /// Returns a cost result excluding ingredients whose IDs are in `onHandIds`.
+    /// Used by the meal plan to calculate how much still needs to be purchased.
+    func costResult(onHandIds: Set<String>, groceryTaxRate: Double = 0, alcoholTaxRate: Double = 0) -> RecipeCostResult {
+        let buyIngredients = onHandIds.isEmpty ? ingredients : ingredients.filter { !onHandIds.contains($0.id.uuidString) }
+        let groceryCost = buyIngredients.filter { !$0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
+        let alcoholCost = buyIngredients.filter { $0.isAlcohol }.reduce(0) { $0 + $1.costContribution }
+        let subtotal = groceryCost + alcoholCost
         let groceryTax = groceryCost * groceryTaxRate
         let alcoholTax = alcoholCost * alcoholTaxRate
-        let total = totalCost + groceryTax + alcoholTax
+        let total = subtotal + groceryTax + alcoholTax
         let perServing = servingsPerBatch > 0 ? total / Double(servingsPerBatch) : total
         return RecipeCostResult(
-            subtotal: totalCost,
+            subtotal: subtotal,
             groceryTaxAmount: groceryTax,
             alcoholTaxAmount: alcoholTax,
             costPerServingWithTax: perServing,
