@@ -43,6 +43,9 @@
 		FFAA0040000000000000001A /* ReceiptScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0020000000000000001A /* ReceiptScannerView.swift */; };
 		FFAA0041000000000000001A /* ReceiptScannerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0021000000000000001A /* ReceiptScannerViewModel.swift */; };
 		FFAA0050000000000000001A /* IngredientTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0060000000000000001A /* IngredientTemplate.swift */; };
+		FFAA0071000000000000001A /* MealPlanEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0061000000000000001A /* MealPlanEntry.swift */; };
+		FFAA0072000000000000001A /* MealPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0062000000000000001A /* MealPlanView.swift */; };
+		FFAA0073000000000000001A /* MealPlanCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0063000000000000001A /* MealPlanCalendarService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +97,9 @@
 		FFAA0020000000000000001A /* ReceiptScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptScannerView.swift; sourceTree = "<group>"; };
 		FFAA0021000000000000001A /* ReceiptScannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptScannerViewModel.swift; sourceTree = "<group>"; };
 		FFAA0060000000000000001A /* IngredientTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientTemplate.swift; sourceTree = "<group>"; };
+		FFAA0061000000000000001A /* MealPlanEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanEntry.swift; sourceTree = "<group>"; };
+		FFAA0062000000000000001A /* MealPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanView.swift; sourceTree = "<group>"; };
+		FFAA0063000000000000001A /* MealPlanCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanCalendarService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +179,7 @@
 				43A601C1265257E200B24B9D /* Models */,
 				43A601B8265255F300B24B9D /* Networking */,
 				FFAA0001000000000000001A /* Persistence */,
+				FFAA0065000000000000001A /* Services */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -221,6 +228,7 @@
 				FFAA0012000000000000001A /* Ingredient.swift */,
 				FFAA0013000000000000001A /* RecipeCostResult.swift */,
 				FFAA0060000000000000001A /* IngredientTemplate.swift */,
+				FFAA0061000000000000001A /* MealPlanEntry.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -257,6 +265,7 @@
 			isa = PBXGroup;
 			children = (
 				FFAA0002000000000000001A /* RecipeCost */,
+				FFAA0064000000000000001A /* MealPlan */,
 			);
 			path = Modules;
 			sourceTree = "<group>";
@@ -317,6 +326,22 @@
 				FFAA0021000000000000001A /* ReceiptScannerViewModel.swift */,
 			);
 			path = AddIngredient;
+			sourceTree = "<group>";
+		};
+		FFAA0064000000000000001A /* MealPlan */ = {
+			isa = PBXGroup;
+			children = (
+				FFAA0062000000000000001A /* MealPlanView.swift */,
+			);
+			path = MealPlan;
+			sourceTree = "<group>";
+		};
+		FFAA0065000000000000001A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FFAA0063000000000000001A /* MealPlanCalendarService.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -454,6 +479,9 @@
 				FFAA003F000000000000001A /* ReceiptScanner.swift in Sources */,
 				FFAA0040000000000000001A /* ReceiptScannerView.swift in Sources */,
 				FFAA0041000000000000001A /* ReceiptScannerViewModel.swift in Sources */,
+				FFAA0071000000000000001A /* MealPlanEntry.swift in Sources */,
+				FFAA0072000000000000001A /* MealPlanView.swift in Sources */,
+				FFAA0073000000000000001A /* MealPlanCalendarService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
