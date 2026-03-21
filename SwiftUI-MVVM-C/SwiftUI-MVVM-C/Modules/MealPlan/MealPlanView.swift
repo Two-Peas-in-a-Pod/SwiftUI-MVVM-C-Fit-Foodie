@@ -22,7 +22,6 @@ struct MealPlanView: View {
 
     @State private var weekStart: Date = Date().startOfWeek
     @State private var pickingDay: IdentifiableInt? = nil
-    @State private var onHandDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
     @State private var isShowingCalendarPicker = false
@@ -71,20 +70,13 @@ struct MealPlanView: View {
             }
             .navigationTitle("Meal Plan")
             .sheet(item: $pickingDay) { wrapper in
-                RecipePickerSheet(recipes: recipes) { chosen in
-                    assignMeal(chosen, toDayOffset: wrapper.value)
-                } onRemove: {
-                    removeMeal(fromDayOffset: wrapper.value)
-                } currentRecipe: {
-                    entry(for: wrapper.value)?.recipe
-                }
-            }
-            .sheet(item: $onHandDay) { wrapper in
-                if let e = entry(for: wrapper.value), let recipe = e.recipe {
-                    OnHandPickerSheet(entry: e, recipe: recipe) {
-                        try? modelContext.save()
-                    }
-                }
+                DayPlanSheet(
+                    entry: entry(for: wrapper.value),
+                    recipes: recipes,
+                    onAssign: { assignMeal($0, toDayOffset: wrapper.value) },
+                    onRemove: { removeMeal(fromDayOffset: wrapper.value) },
+                    onSave: { try? modelContext.save() }
+                )
             }
             .sheet(isPresented: $isShowingCalendarPicker) {
                 CalendarPickerSheet(
@@ -233,7 +225,8 @@ struct MealPlanView: View {
         let date = Calendar.current.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
         let dayName = date.formatted(.dateTime.weekday(.wide))
         let dateLabel = date.formatted(.dateTime.month().day())
-        let assignedRecipe = entry(for: offset)?.recipe
+        let assignedEntry = entry(for: offset)
+        let assignedRecipe = assignedEntry?.recipe
         let isToday = Calendar.current.isDateInToday(date)
 
         return Button {
@@ -254,7 +247,6 @@ struct MealPlanView: View {
                 Divider().frame(height: 36)
 
                 if let recipe = assignedRecipe {
-                    let assignedEntry = entry(for: offset)
                     let onHandIds = Set(assignedEntry?.onHandIngredientIds ?? [])
                     let buyCost = recipe.costResult(onHandIds: onHandIds, groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
                     let fullCost = onHandIds.isEmpty ? buyCost : recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
@@ -289,16 +281,6 @@ struct MealPlanView: View {
                 }
 
                 Spacer()
-                if assignedRecipe != nil {
-                    Button {
-                        onHandDay = IdentifiableInt(value: offset)
-                    } label: {
-                        Image(systemName: "checklist")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
                 Image(systemName: assignedRecipe == nil ? "plus.circle" : "chevron.right")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -325,6 +307,8 @@ struct MealPlanView: View {
             if let oldId = existing.calendarEventId {
                 try? calendarService.removeEvent(identifier: oldId)
             }
+            // Clear on-hand IDs — they belong to the previous recipe
+            existing.onHandIngredientIds = []
             existing.recipe = recipe
             existing.calendarEventId = nil
         } else {
@@ -382,16 +366,33 @@ private struct IdentifiableInt: Identifiable {
     var id: Int { value }
 }
 
-// MARK: - Recipe picker sheet
+// MARK: - Combined day plan sheet (recipe picker + on-hand ingredients)
 
-private struct RecipePickerSheet: View {
+private struct DayPlanSheet: View {
+    let entry: MealPlanEntry?
     let recipes: [Recipe]
-    let onSelect: (Recipe) -> Void
+    let onAssign: (Recipe) -> Void
     let onRemove: () -> Void
-    let currentRecipe: () -> Recipe?
+    let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    @State private var isPicking: Bool
+    @State private var currentRecipe: Recipe?
+
+    init(entry: MealPlanEntry?, recipes: [Recipe],
+         onAssign: @escaping (Recipe) -> Void,
+         onRemove: @escaping () -> Void,
+         onSave: @escaping () -> Void) {
+        self.entry = entry
+        self.recipes = recipes
+        self.onAssign = onAssign
+        self.onRemove = onRemove
+        self.onSave = onSave
+        let recipe = entry?.recipe
+        _currentRecipe = State(initialValue: recipe)
+        _isPicking = State(initialValue: recipe == nil)
+    }
 
     private var filtered: [Recipe] {
         searchText.isEmpty ? recipes : recipes.filter {
@@ -401,46 +402,150 @@ private struct RecipePickerSheet: View {
 
     var body: some View {
         NavigationView {
-            List {
-                if let current = currentRecipe() {
-                    Section {
-                        Button(role: .destructive) {
-                            onRemove()
-                            dismiss()
-                        } label: {
-                            Label("Remove \(current.name)", systemImage: "trash")
-                        }
+            Group {
+                if isPicking {
+                    pickerList
+                } else if let recipe = currentRecipe {
+                    assignedList(recipe: recipe)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    // Show Back only when in "change recipe" mode (had a recipe, now picking)
+                    if isPicking && currentRecipe != nil {
+                        Button("Back") { isPicking = false }
+                    } else if isPicking {
+                        Button("Cancel") { dismiss() }
                     }
                 }
-
-                Section(header: Text("Choose a Recipe")) {
-                    if filtered.isEmpty {
-                        Text("No recipes found.")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(filtered) { recipe in
-                            Button {
-                                onSelect(recipe)
-                                dismiss()
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(recipe.name)
-                                        .foregroundColor(.primary)
-                                        .font(.subheadline)
-                                    Text(String(format: "$%.2f total · %d servings",
-                                                recipe.totalCost, recipe.servingsPerBatch))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                ToolbarItem(placement: .confirmationAction) {
+                    if !isPicking {
+                        Button("Done") {
+                            onSave()
+                            dismiss()
                         }
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "Search recipes")
-            .navigationTitle("Assign Meal")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Cancel") { dismiss() })
+        }
+    }
+
+    // MARK: - Recipe picker
+
+    private var pickerList: some View {
+        List {
+            Section(header: Text("Choose a Recipe")) {
+                if filtered.isEmpty {
+                    Text("No recipes found.")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(filtered) { recipe in
+                        Button {
+                            selectRecipe(recipe)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(recipe.name)
+                                    .foregroundColor(.primary)
+                                    .font(.subheadline)
+                                Text(String(format: "$%.2f total · %d servings",
+                                            recipe.totalCost, recipe.servingsPerBatch))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .searchable(text: $searchText, prompt: "Search recipes")
+        .navigationTitle("Choose a Recipe")
+    }
+
+    private func selectRecipe(_ recipe: Recipe) {
+        onAssign(recipe)
+        currentRecipe = recipe
+        isPicking = false
+        searchText = ""
+    }
+
+    // MARK: - Assigned view with on-hand checklist
+
+    private func assignedList(recipe: Recipe) -> some View {
+        List {
+            Section {
+                HStack {
+                    Text(recipe.name)
+                        .font(.headline)
+                    Spacer()
+                    Button("Change") { isPicking = true }
+                        .font(.subheadline)
+                        .foregroundColor(.accentColor)
+                }
+                Button(role: .destructive) {
+                    onRemove()
+                    dismiss()
+                } label: {
+                    Label("Remove from plan", systemImage: "trash")
+                }
+            }
+
+            if !recipe.ingredients.isEmpty {
+                Section(header: Text("What I Already Have")) {
+                    ForEach(recipe.ingredients) { ingredient in
+                        ingredientRow(ingredient)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Plan Day")
+    }
+
+    private func ingredientRow(_ ingredient: Ingredient) -> some View {
+        let isOnHand = entry?.onHandIngredientIds.contains(ingredient.id.uuidString) ?? false
+        return Button {
+            toggleOnHand(ingredient)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isOnHand ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isOnHand ? .accentColor : .secondary)
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ingredient.name)
+                        .foregroundColor(.primary)
+                        .font(.subheadline)
+                    Text(String(format: "%g %@ · $%.2f",
+                                ingredient.recipeQuantity,
+                                ingredient.recipeUnit,
+                                ingredient.costContribution))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if isOnHand {
+                    Text("on hand")
+                        .font(.caption2)
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12))
+                        .cornerRadius(4)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toggleOnHand(_ ingredient: Ingredient) {
+        guard let entry else { return }
+        let idStr = ingredient.id.uuidString
+        if let idx = entry.onHandIngredientIds.firstIndex(of: idStr) {
+            entry.onHandIngredientIds.remove(at: idx)
+        } else {
+            entry.onHandIngredientIds.append(idStr)
         }
     }
 }
@@ -529,69 +634,5 @@ struct CalendarPickerSheet: View {
 
     private func calendarsFor(source: String) -> [EKCalendar] {
         calendars.filter { $0.source.title == source }
-    }
-}
-
-// MARK: - On-hand ingredient picker sheet
-
-private struct OnHandPickerSheet: View {
-    let entry: MealPlanEntry
-    let recipe: Recipe
-    let onSave: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationView {
-            List(recipe.ingredients) { ingredient in
-                let isOnHand = entry.onHandIngredientIds.contains(ingredient.id.uuidString)
-                Button {
-                    toggle(ingredient)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: isOnHand ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isOnHand ? .accentColor : .secondary)
-                            .font(.title3)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(ingredient.name)
-                                .foregroundColor(.primary)
-                                .font(.subheadline)
-                            Text(String(format: "%g %@ · $%.2f",
-                                        ingredient.recipeQuantity,
-                                        ingredient.recipeUnit,
-                                        ingredient.costContribution))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        if isOnHand {
-                            Text("on hand")
-                                .font(.caption2)
-                                .foregroundColor(.accentColor)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.accentColor.opacity(0.12))
-                                .cornerRadius(4)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .navigationTitle("What I Already Have")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Done") {
-                onSave()
-                dismiss()
-            })
-        }
-    }
-
-    private func toggle(_ ingredient: Ingredient) {
-        let idStr = ingredient.id.uuidString
-        if let idx = entry.onHandIngredientIds.firstIndex(of: idStr) {
-            entry.onHandIngredientIds.remove(at: idx)
-        } else {
-            entry.onHandIngredientIds.append(idStr)
-        }
     }
 }
