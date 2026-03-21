@@ -19,7 +19,8 @@ final class MealPlanCalendarService: ObservableObject {
     func requestAccess() async -> Bool {
         if #available(iOS 17, *) {
             do {
-                return try await store.requestWriteOnlyAccessToEvents()
+                // Full access is required to enumerate calendars via store.calendars(for:)
+                return try await store.requestFullAccessToEvents()
             } catch {
                 return false
             }
@@ -39,7 +40,7 @@ final class MealPlanCalendarService: ObservableObject {
     var isAuthorized: Bool {
         let status = authorizationStatus
         if #available(iOS 17, *) {
-            return status == .fullAccess || status == .writeOnly
+            return status == .fullAccess
         } else {
             return status == .authorized
         }

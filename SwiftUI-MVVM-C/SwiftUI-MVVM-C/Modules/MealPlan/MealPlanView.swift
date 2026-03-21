@@ -406,13 +406,28 @@ private struct CalendarPickerSheet: View {
     @StateObject private var service = MealPlanCalendarService.shared
     @Environment(\.dismiss) private var dismiss
     @State private var calendars: [EKCalendar] = []
+    @State private var isLoaded = false
 
     var body: some View {
         NavigationView {
             Group {
-                if calendars.isEmpty {
+                if !isLoaded {
                     ProgressView("Loading calendars…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if calendars.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.exclamationmark")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                        Text("No writable calendars found")
+                            .foregroundColor(.secondary)
+                        Text("Make sure calendar access is allowed in Settings.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
                         // Group calendars by their source (account) name
@@ -434,6 +449,7 @@ private struct CalendarPickerSheet: View {
                     _ = await service.requestAccess()
                 }
                 calendars = service.availableCalendars()
+                isLoaded = true
             }
         }
     }
