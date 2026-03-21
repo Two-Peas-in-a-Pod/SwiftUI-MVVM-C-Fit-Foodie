@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import EventKit
 
 struct RecipeListView: View {
     @Query(sort: \Recipe.name) private var recipes: [Recipe]
@@ -117,7 +118,11 @@ private struct CostSettingsSheet: View {
     @AppStorage("krogerClientId") private var krogerClientId: String = ""
     @AppStorage("krogerClientSecret") private var krogerClientSecret: String = ""
     @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = false
+    @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
     @Environment(\.dismiss) private var dismiss
+
+    @StateObject private var calendarService = MealPlanCalendarService.shared
+    @State private var isShowingCalendarPicker = false
 
     @State private var groceryTaxText = ""
     @State private var alcoholTaxText = ""
@@ -158,6 +163,23 @@ private struct CostSettingsSheet: View {
                     Toggle("Cost Goal per Serving", isOn: $costGoalEnabled)
                 }
 
+                Section(header: Text("Meal Plan")) {
+                    HStack {
+                        Text("Calendar")
+                        Spacer()
+                        let calName = calendarService.calendar(for: preferredCalendarId)?.title
+                        Button(calName ?? "None") {
+                            Task {
+                                if !calendarService.isAuthorized {
+                                    _ = await calendarService.requestAccess()
+                                }
+                                isShowingCalendarPicker = true
+                            }
+                        }
+                        .foregroundColor(calName == nil ? .accentColor : .secondary)
+                    }
+                }
+
                 Section(
                     header: Text("Kroger API"),
                     footer: Text("Credentials from developer.kroger.com. Required to use the ingredient price lookup feature. Stored locally on your device.")
@@ -174,6 +196,11 @@ private struct CostSettingsSheet: View {
                 leading: Button("Cancel") { dismiss() },
                 trailing: Button("Save") { save() }
             )
+            .sheet(isPresented: $isShowingCalendarPicker) {
+                CalendarPickerSheet(preferredCalendarId: preferredCalendarId) { cal in
+                    preferredCalendarId = cal.calendarIdentifier
+                }
+            }
             .onAppear {
                 groceryTaxText = salesTaxRate == 0 ? "" : String(format: "%g", salesTaxRate)
                 alcoholTaxText = alcoholTaxRate == 0 ? "" : String(format: "%g", alcoholTaxRate)

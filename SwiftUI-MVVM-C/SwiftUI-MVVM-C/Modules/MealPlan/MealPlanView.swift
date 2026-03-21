@@ -190,7 +190,7 @@ struct MealPlanView: View {
             if !assignedEntries.isEmpty {
                 Divider()
                 Button {
-                    Task { await requestAndShowCalendarPicker() }
+                    Task { await addToCalendarTapped() }
                 } label: {
                     Label("Add to Calendar", systemImage: "calendar.badge.plus")
                         .font(.subheadline)
@@ -302,11 +302,16 @@ struct MealPlanView: View {
 
     // MARK: - Calendar export
 
-    private func requestAndShowCalendarPicker() async {
+    private func addToCalendarTapped() async {
         if !calendarService.isAuthorized {
             guard await calendarService.requestAccess() else { return }
         }
-        isShowingCalendarPicker = true
+        // If a preferred calendar is already saved and still exists, use it directly.
+        if let saved = calendarService.calendar(for: preferredCalendarId) {
+            exportWeekToCalendar(saved)
+        } else {
+            isShowingCalendarPicker = true
+        }
     }
 
     private func exportWeekToCalendar(_ calendar: EKCalendar) {
@@ -399,7 +404,7 @@ private struct RecipePickerSheet: View {
 
 // MARK: - Calendar picker sheet
 
-private struct CalendarPickerSheet: View {
+struct CalendarPickerSheet: View {
     let preferredCalendarId: String
     let onSelect: (EKCalendar) -> Void
 
