@@ -21,8 +21,8 @@ struct MealPlanView: View {
     @AppStorage("weeklyBudgetEnabled") private var weeklyBudgetEnabled: Bool = false
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
 
-    @State private var weekStart: Date = Date().startOfWeek
-    @State private var pageIndex: Int = 1
+    @State private var baseWeekStart: Date = Date().startOfWeek
+    @State private var pageIndex: Int = 500
     @State private var pickingDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
@@ -36,22 +36,11 @@ struct MealPlanView: View {
     var body: some View {
         NavigationStack {
             TabView(selection: $pageIndex) {
-                weekPage(offset: -1).tag(0)
-                weekPage(offset:  0).tag(1)
-                weekPage(offset:  1).tag(2)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: pageIndex) { _, newPage in
-                guard newPage != 1 else { return }
-                let delta = newPage == 0 ? -1 : 1
-                let newStart = Calendar.current.date(byAdding: .weekOfYear, value: delta, to: weekStart) ?? weekStart
-                var t = Transaction()
-                t.disablesAnimations = true
-                withTransaction(t) {
-                    weekStart = newStart
-                    pageIndex = 1
+                ForEach(0..<1000, id: \.self) { index in
+                    weekPage(forIndex: index).tag(index)
                 }
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             .navigationTitle("Meal Plan")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -69,10 +58,11 @@ struct MealPlanView: View {
                 }
             }
             .sheet(item: $pickingDay) { wrapper in
-                let currentEntry = entry(for: wrapper.value, weekStart: weekStart)
+                let ws = currentWeekStart
+                let currentEntry = entry(for: wrapper.value, weekStart: ws)
                 DayPlanSheet(
                     dayOffset: wrapper.value,
-                    weekStart: weekStart,
+                    weekStart: ws,
                     recipes: recipes,
                     initialRecipe: currentEntry?.recipe,
                     onAssign: { assignMeal($0, toDayOffset: wrapper.value) },
@@ -93,9 +83,13 @@ struct MealPlanView: View {
 
     // MARK: - Week page
 
+    private var currentWeekStart: Date {
+        Calendar.current.date(byAdding: .weekOfYear, value: pageIndex - 500, to: baseWeekStart) ?? baseWeekStart
+    }
+
     @ViewBuilder
-    private func weekPage(offset: Int) -> some View {
-        let ws = Calendar.current.date(byAdding: .weekOfYear, value: offset, to: weekStart) ?? weekStart
+    private func weekPage(forIndex index: Int) -> some View {
+        let ws = Calendar.current.date(byAdding: .weekOfYear, value: index - 500, to: baseWeekStart) ?? baseWeekStart
         let entries = allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: ws) }
         let assigned = entries.filter { $0.recipe != nil }
         let totalCost = assigned.reduce(0.0) { sum, e in
@@ -120,7 +114,7 @@ struct MealPlanView: View {
 
     private func weekHeader(ws: Date) -> some View {
         HStack {
-            Button { pageIndex = 0 } label: {
+            Button { withAnimation { pageIndex -= 1 } } label: {
                 Image(systemName: "chevron.left")
                     .font(.title3)
                     .padding(.horizontal, 8)
@@ -129,7 +123,7 @@ struct MealPlanView: View {
             Text(weekLabel(for: ws))
                 .font(.headline)
             Spacer()
-            Button { pageIndex = 2 } label: {
+            Button { withAnimation { pageIndex += 1 } } label: {
                 Image(systemName: "chevron.right")
                     .font(.title3)
                     .padding(.horizontal, 8)
@@ -344,7 +338,7 @@ struct MealPlanView: View {
     }
 
     private func assignMeal(_ recipe: Recipe, toDayOffset offset: Int) {
-        if let existing = entry(for: offset, weekStart: weekStart) {
+        if let existing = entry(for: offset, weekStart: currentWeekStart) {
             if let oldId = existing.calendarEventId {
                 try? calendarService.removeEvent(identifier: oldId)
             }
@@ -352,14 +346,14 @@ struct MealPlanView: View {
             existing.recipe = recipe
             existing.calendarEventId = nil
         } else {
-            let newEntry = MealPlanEntry(weekStartDate: weekStart, dayOffset: offset, recipe: recipe)
+            let newEntry = MealPlanEntry(weekStartDate: currentWeekStart, dayOffset: offset, recipe: recipe)
             modelContext.insert(newEntry)
         }
         try? modelContext.save()
     }
 
     private func removeMeal(fromDayOffset offset: Int) {
-        guard let existing = entry(for: offset, weekStart: weekStart) else { return }
+        guard let existing = entry(for: offset, weekStart: currentWeekStart) else { return }
         if let oldId = existing.calendarEventId {
             try? calendarService.removeEvent(identifier: oldId)
         }
@@ -382,7 +376,7 @@ struct MealPlanView: View {
 
     private func exportWeekToCalendar(_ calendar: EKCalendar) {
         preferredCalendarId = calendar.calendarIdentifier
-        let entries = allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart) }
+        let entries = allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: currentWeekStart) }
         for entry in entries where entry.recipe != nil {
             guard let recipe = entry.recipe else { continue }
             if let oldId = entry.calendarEventId {
