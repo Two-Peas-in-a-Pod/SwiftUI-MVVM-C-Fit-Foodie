@@ -141,13 +141,16 @@ struct MealPlanView: View {
                             .controlSize(.small)
                         }
                     } else {
-                        Button {
-                            budgetText = weeklyBudget > 0 ? String(format: "%g", weeklyBudget) : ""
-                            isEditingBudget = true
-                        } label: {
-                            Text(weeklyBudget > 0 ? String(format: "$%.2f", weeklyBudget) : "Set budget")
+                        HStack(spacing: 8) {
+                            Text(weeklyBudget > 0 ? String(format: "$%.2f", weeklyBudget) : "Not set")
                                 .font(.subheadline)
-                                .foregroundColor(weeklyBudget > 0 ? .primary : .accentColor)
+                                .foregroundColor(weeklyBudget > 0 ? .primary : .secondary)
+                            Button("Edit") {
+                                budgetText = weeklyBudget > 0 ? String(format: "%g", weeklyBudget) : ""
+                                isEditingBudget = true
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.accentColor)
                         }
                     }
                 }
