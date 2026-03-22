@@ -78,7 +78,7 @@ struct MealPlanView: View {
                     weekStart: currentWeekStart,
                     recipes: recipes,
                     onAssign: { assignMeal($0, toDayOffset: wrapper.value) },
-                    onRemove: { removeMeal(fromDayOffset: wrapper.value) },
+                    onRemove: { removeMeal($0) },
                     onSave: { try? modelContext.save() }
                 )
             }
@@ -272,9 +272,23 @@ struct MealPlanView: View {
         let date = Calendar.current.date(byAdding: .day, value: offset, to: ws) ?? ws
         let dayName = date.formatted(.dateTime.weekday(.wide))
         let dateLabel = date.formatted(.dateTime.month().day())
-        let assignedEntry = entries.first { $0.dayOffset == offset }
-        let assignedRecipe = assignedEntry?.recipe
         let isToday = Calendar.current.isDateInToday(date)
+
+        let dayEntries = entries.filter { $0.dayOffset == offset && $0.recipe != nil }
+        let mealCount = dayEntries.count
+
+        // Precompute display values outside @ViewBuilder
+        let firstEntry = dayEntries.first
+        let firstRecipe = firstEntry?.recipe
+        let onHandIds = Set(firstEntry?.onHandIngredientIds ?? [])
+        let buyCost = firstRecipe.map {
+            $0.costResult(onHandIds: onHandIds, groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
+        }
+        let fullCost = (!onHandIds.isEmpty ? firstRecipe?.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100) : nil)
+        let totalBuyCost = mealCount > 1 ? dayEntries.reduce(0.0) { sum, e in
+            guard let r = e.recipe else { return sum }
+            return sum + r.costResult(onHandIds: Set(e.onHandIngredientIds), groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100).totalWithTax
+        } : 0.0
 
         return Button {
             pickingDay = IdentifiableInt(value: offset)
@@ -293,42 +307,47 @@ struct MealPlanView: View {
 
                 Divider().frame(height: 36)
 
-                if let recipe = assignedRecipe {
-                    let onHandIds = Set(assignedEntry?.onHandIngredientIds ?? [])
-                    let buyCost = recipe.costResult(onHandIds: onHandIds, groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
-                    let fullCost = onHandIds.isEmpty ? buyCost : recipe.costResult(groceryTaxRate: salesTaxRate / 100, alcoholTaxRate: alcoholTaxRate / 100)
+                if mealCount == 0 {
+                    Text("No meal planned")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else if mealCount == 1, let recipe = firstRecipe, let buyCost {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(recipe.name)
                             .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        if onHandIds.isEmpty {
-                            Text(buyCost.formattedTotalCost)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        } else {
+                        if let fullCost {
                             HStack(spacing: 4) {
                                 Text(buyCost.formattedTotalCost + " to buy")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.caption).foregroundColor(.secondary)
                                 Text("·")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.caption).foregroundColor(.secondary)
                                 Text(fullCost.formattedTotalCost + " full")
-                                    .font(.caption)
-                                    .foregroundColor(Color(.tertiaryLabel))
+                                    .font(.caption).foregroundColor(Color(.tertiaryLabel))
                             }
+                        } else {
+                            Text(buyCost.formattedTotalCost)
+                                .font(.caption).foregroundColor(.secondary)
                         }
                     }
-                } else {
-                    Text("No meal planned")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                } else if let recipe = firstRecipe {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(recipe.name)
+                                .font(.subheadline).fontWeight(.medium).foregroundColor(.primary)
+                                .lineLimit(1)
+                            Text("& \(mealCount - 1) more")
+                                .font(.subheadline).foregroundColor(.secondary)
+                        }
+                        Text(String(format: "$%.2f total", totalBuyCost))
+                            .font(.caption).foregroundColor(.secondary)
+                    }
                 }
 
                 Spacer()
-                Image(systemName: assignedRecipe == nil ? "plus.circle" : "chevron.right")
+                Image(systemName: mealCount == 0 ? "plus.circle" : "chevron.right")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -345,30 +364,13 @@ struct MealPlanView: View {
 
     // MARK: - Meal assignment
 
-    private func entry(for dayOffset: Int, weekStart ws: Date) -> MealPlanEntry? {
-        allEntries.first {
-            $0.dayOffset == dayOffset &&
-            Calendar.current.isDate($0.weekStartDate, inSameDayAs: ws)
-        }
-    }
-
     private func assignMeal(_ recipe: Recipe, toDayOffset offset: Int) {
-        if let existing = entry(for: offset, weekStart: currentWeekStart) {
-            if let oldId = existing.calendarEventId {
-                try? calendarService.removeEvent(identifier: oldId)
-            }
-            existing.onHandIngredientIds = []
-            existing.recipe = recipe
-            existing.calendarEventId = nil
-        } else {
-            let newEntry = MealPlanEntry(weekStartDate: currentWeekStart, dayOffset: offset, recipe: recipe)
-            modelContext.insert(newEntry)
-        }
+        let newEntry = MealPlanEntry(weekStartDate: currentWeekStart, dayOffset: offset, recipe: recipe)
+        modelContext.insert(newEntry)
         try? modelContext.save()
     }
 
-    private func removeMeal(fromDayOffset offset: Int) {
-        guard let existing = entry(for: offset, weekStart: currentWeekStart) else { return }
+    private func removeMeal(_ existing: MealPlanEntry) {
         if let oldId = existing.calendarEventId {
             try? calendarService.removeEvent(identifier: oldId)
         }
@@ -414,37 +416,32 @@ private struct IdentifiableInt: Identifiable {
     var id: Int { value }
 }
 
-// MARK: - Day plan sheet (recipe picker with NavigationStack push/pop)
+// MARK: - Day plan sheet (day-level manager + recipe picker)
 
 private struct DayPlanSheet: View {
     let dayOffset: Int
     let weekStart: Date
     let recipes: [Recipe]
     let onAssign: (Recipe) -> Void
-    let onRemove: () -> Void
+    let onRemove: (MealPlanEntry) -> Void
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Query private var allEntries: [MealPlanEntry]
+    @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
+    @State private var path: [NavStep] = []
     @State private var searchText = ""
-    @State private var path: [Recipe]
 
-    init(dayOffset: Int, weekStart: Date, recipes: [Recipe],
-         onAssign: @escaping (Recipe) -> Void,
-         onRemove: @escaping () -> Void,
-         onSave: @escaping () -> Void) {
-        self.dayOffset = dayOffset
-        self.weekStart = weekStart
-        self.recipes = recipes
-        self.onAssign = onAssign
-        self.onRemove = onRemove
-        self.onSave = onSave
-        _path = State(initialValue: [])
+    private enum NavStep: Hashable {
+        case picker
+        case detail(MealPlanEntry)
     }
 
-    private var entry: MealPlanEntry? {
-        allEntries.first {
+    private var dayEntries: [MealPlanEntry] {
+        allEntries.filter {
             $0.dayOffset == dayOffset &&
+            $0.recipe != nil &&
             Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart)
         }
     }
@@ -457,41 +454,97 @@ private struct DayPlanSheet: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            pickerList
-                .navigationTitle("Choose a Recipe")
+            dayManager
+                .navigationTitle("Plan Day")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }
                     }
                 }
-                .navigationDestination(for: Recipe.self) { recipe in
-                    PlanDayDetailView(
-                        recipe: recipe,
-                        entry: entry,
-                        onBack: { path = [] },
-                        onRemove: {
-                            onRemove()
-                            dismiss()
-                        },
-                        onSave: onSave,
-                        dismissSheet: dismiss
-                    )
+                .navigationDestination(for: NavStep.self) { step in
+                    switch step {
+                    case .picker:
+                        pickerList
+                            .navigationTitle("Choose a Recipe")
+                            .navigationBarTitleDisplayMode(.inline)
+                    case .detail(let entry):
+                        if let recipe = entry.recipe {
+                            PlanDayDetailView(
+                                recipe: recipe,
+                                entry: entry,
+                                onBack: { path.removeLast() },
+                                onRemove: {
+                                    onRemove(entry)
+                                    path.removeLast()
+                                },
+                                onSave: onSave,
+                                dismissSheet: dismiss
+                            )
+                        }
+                    }
                 }
         }
-        .onAppear {
-            if path.isEmpty, let recipe = entry?.recipe {
-                withAnimation(.none) { path = [recipe] }
+        .onChange(of: dayEntries.isEmpty) { _, isEmpty in
+            if isEmpty { dismiss() }
+        }
+    }
+
+    private var dayManager: some View {
+        List {
+            if !dayEntries.isEmpty {
+                Section("Planned") {
+                    ForEach(dayEntries) { entry in
+                        entryRow(entry)
+                    }
+                }
+            }
+            Section {
+                Button {
+                    searchText = ""
+                    path = [.picker]
+                } label: {
+                    Label("Add a meal", systemImage: "plus.circle")
+                }
             }
         }
-        .onChange(of: entry == nil) { _, isNil in
-            if isNil { dismiss() }
+    }
+
+    private func entryRow(_ entry: MealPlanEntry) -> some View {
+        let recipe = entry.recipe
+        let cost = recipe?.costResult(
+            onHandIds: Set(entry.onHandIngredientIds),
+            groceryTaxRate: salesTaxRate / 100,
+            alcoholTaxRate: alcoholTaxRate / 100
+        )
+        return Button {
+            path = [.detail(entry)]
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(recipe?.name ?? "")
+                        .foregroundColor(.primary)
+                        .font(.subheadline)
+                    if let cost {
+                        Text(cost.formattedTotalCost)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     private var pickerList: some View {
         List {
-            Section(header: Text("Choose a Recipe")) {
+            Section {
                 if filtered.isEmpty {
                     Text("No recipes found.")
                         .foregroundColor(.secondary)
@@ -500,7 +553,7 @@ private struct DayPlanSheet: View {
                         Button {
                             onAssign(recipe)
                             searchText = ""
-                            path = [recipe]
+                            path = []
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(recipe.name)
