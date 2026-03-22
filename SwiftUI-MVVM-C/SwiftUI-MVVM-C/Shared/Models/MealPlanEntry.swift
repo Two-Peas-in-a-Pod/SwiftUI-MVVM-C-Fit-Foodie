@@ -40,10 +40,11 @@ class MealPlanEntry {
 // MARK: - Week helpers
 
 extension Date {
-    /// Returns the Monday of the week containing this date, normalized to midnight local time.
-    var startOfWeek: Date {
+    /// Returns the start of the week containing this date, normalized to midnight local time.
+    /// - Parameter firstWeekday: 1 = Sunday, 2 = Monday (default Sunday)
+    func startOfWeek(firstWeekday: Int = 1) -> Date {
         var cal = Calendar.current
-        cal.firstWeekday = 2 // Monday
+        cal.firstWeekday = firstWeekday
         let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
         return cal.date(from: comps) ?? self
     }

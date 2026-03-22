@@ -122,6 +122,7 @@ struct CostSettingsSheet: View {
     @AppStorage("costGoalEnabled") private var costGoalEnabled: Bool = false
     @AppStorage("weeklyBudgetEnabled") private var weeklyBudgetEnabled: Bool = false
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
+    @AppStorage("weekStartsOnSunday") private var weekStartsOnSunday: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var calendarService = MealPlanCalendarService.shared
@@ -170,6 +171,10 @@ struct CostSettingsSheet: View {
                     header: Text("Meal Plan"),
                     footer: Text("Track your weekly meal spending against a budget.")
                 ) {
+                    Picker("Week Starts On", selection: $weekStartsOnSunday) {
+                        Text("Sunday").tag(true)
+                        Text("Monday").tag(false)
+                    }
                     Toggle("Weekly Budget", isOn: $weeklyBudgetEnabled)
                     HStack {
                         Text("Calendar")

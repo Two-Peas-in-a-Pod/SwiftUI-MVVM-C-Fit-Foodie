@@ -20,8 +20,9 @@ struct MealPlanView: View {
     @AppStorage("weeklyMealBudget") private var weeklyBudget: Double = 0
     @AppStorage("weeklyBudgetEnabled") private var weeklyBudgetEnabled: Bool = false
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
+    @AppStorage("weekStartsOnSunday") private var weekStartsOnSunday: Bool = true
 
-    @State private var baseWeekStart: Date = Date().startOfWeek
+    @State private var baseWeekStart: Date = Date().startOfWeek(firstWeekday: 1)
     @State private var pageIndex: Int = 500
     @State private var pickingDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
@@ -88,6 +89,10 @@ struct MealPlanView: View {
             }
             .sheet(isPresented: $isShowingSettings) {
                 CostSettingsSheet()
+            }
+            .onChange(of: weekStartsOnSunday) { _, startsOnSunday in
+                baseWeekStart = Date().startOfWeek(firstWeekday: startsOnSunday ? 1 : 2)
+                pageIndex = 500
             }
         }
     }
