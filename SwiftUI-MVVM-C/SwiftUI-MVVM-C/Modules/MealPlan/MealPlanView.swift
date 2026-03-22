@@ -22,73 +22,36 @@ struct MealPlanView: View {
     @AppStorage("preferredCalendarId") private var preferredCalendarId: String = ""
 
     @State private var weekStart: Date = Date().startOfWeek
+    @State private var pageIndex: Int = 1
     @State private var pickingDay: IdentifiableInt? = nil
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
     @State private var isShowingCalendarPicker = false
     @State private var isShowingSettings = false
-    @GestureState private var weekDragOffset: CGFloat = 0
 
     @StateObject private var calendarService = MealPlanCalendarService.shared
-
-    // MARK: - Derived state
-
-    private var weekEntries: [MealPlanEntry] {
-        allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart) }
-    }
-
-    private var assignedEntries: [MealPlanEntry] {
-        weekEntries.filter { $0.recipe != nil }
-    }
-
-    private var weekTotalCost: Double {
-        assignedEntries.reduce(0) { sum, entry in
-            guard let recipe = entry.recipe else { return sum }
-            return sum + recipe.costResult(
-                onHandIds: Set(entry.onHandIngredientIds),
-                groceryTaxRate: salesTaxRate / 100,
-                alcoholTaxRate: alcoholTaxRate / 100
-            ).totalWithTax
-        }
-    }
-
-    private var weekLabel: String {
-        let end = Calendar.current.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
-        let fmt = DateFormatter()
-        fmt.dateFormat = "MMM d"
-        return "\(fmt.string(from: weekStart)) – \(fmt.string(from: end))"
-    }
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    weekNavigator
-                    budgetCard
-                    daysSection
-                }
-                .padding()
-                .offset(x: weekDragOffset)
+            TabView(selection: $pageIndex) {
+                weekPage(offset: -1).tag(0)
+                weekPage(offset:  0).tag(1)
+                weekPage(offset:  1).tag(2)
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 40, coordinateSpace: .local)
-                    .updating($weekDragOffset) { value, state, _ in
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        state = value.translation.width * 0.25
-                    }
-                    .onEnded { value in
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            if value.translation.width < 0 {
-                                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
-                            } else {
-                                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
-                            }
-                        }
-                    }
-            )
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .onChange(of: pageIndex) { _, newPage in
+                guard newPage != 1 else { return }
+                let delta = newPage == 0 ? -1 : 1
+                let newStart = Calendar.current.date(byAdding: .weekOfYear, value: delta, to: weekStart) ?? weekStart
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) {
+                    weekStart = newStart
+                    pageIndex = 1
+                }
+            }
             .navigationTitle("Meal Plan")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -106,18 +69,19 @@ struct MealPlanView: View {
                 }
             }
             .sheet(item: $pickingDay) { wrapper in
+                let currentEntry = entry(for: wrapper.value, weekStart: weekStart)
                 DayPlanSheet(
-                    entry: entry(for: wrapper.value),
+                    dayOffset: wrapper.value,
+                    weekStart: weekStart,
                     recipes: recipes,
+                    initialRecipe: currentEntry?.recipe,
                     onAssign: { assignMeal($0, toDayOffset: wrapper.value) },
                     onRemove: { removeMeal(fromDayOffset: wrapper.value) },
                     onSave: { try? modelContext.save() }
                 )
             }
             .sheet(isPresented: $isShowingCalendarPicker) {
-                CalendarPickerSheet(
-                    preferredCalendarId: preferredCalendarId
-                ) { calendar in
+                CalendarPickerSheet(preferredCalendarId: preferredCalendarId) { calendar in
                     exportWeekToCalendar(calendar)
                 }
             }
@@ -127,24 +91,45 @@ struct MealPlanView: View {
         }
     }
 
-    // MARK: - Subviews
+    // MARK: - Week page
 
-    private var weekNavigator: some View {
+    @ViewBuilder
+    private func weekPage(offset: Int) -> some View {
+        let ws = Calendar.current.date(byAdding: .weekOfYear, value: offset, to: weekStart) ?? weekStart
+        let entries = allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: ws) }
+        let assigned = entries.filter { $0.recipe != nil }
+        let totalCost = assigned.reduce(0.0) { sum, e in
+            guard let r = e.recipe else { return sum }
+            return sum + r.costResult(
+                onHandIds: Set(e.onHandIngredientIds),
+                groceryTaxRate: salesTaxRate / 100,
+                alcoholTaxRate: alcoholTaxRate / 100
+            ).totalWithTax
+        }
+        ScrollView {
+            VStack(spacing: 16) {
+                weekHeader(ws: ws)
+                budgetCardView(totalCost: totalCost, assigned: assigned)
+                daysSectionView(ws: ws, entries: entries)
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Week header
+
+    private func weekHeader(ws: Date) -> some View {
         HStack {
-            Button {
-                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
-            } label: {
+            Button { pageIndex = 0 } label: {
                 Image(systemName: "chevron.left")
                     .font(.title3)
                     .padding(.horizontal, 8)
             }
             Spacer()
-            Text(weekLabel)
+            Text(weekLabel(for: ws))
                 .font(.headline)
             Spacer()
-            Button {
-                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
-            } label: {
+            Button { pageIndex = 2 } label: {
                 Image(systemName: "chevron.right")
                     .font(.title3)
                     .padding(.horizontal, 8)
@@ -155,7 +140,16 @@ struct MealPlanView: View {
         .cornerRadius(12)
     }
 
-    private var budgetCard: some View {
+    private func weekLabel(for date: Date) -> String {
+        let end = Calendar.current.date(byAdding: .day, value: 6, to: date) ?? date
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM d"
+        return "\(fmt.string(from: date)) – \(fmt.string(from: end))"
+    }
+
+    // MARK: - Budget card
+
+    private func budgetCardView(totalCost: Double, assigned: [MealPlanEntry]) -> some View {
         VStack(spacing: 10) {
             HStack {
                 Text(weeklyBudgetEnabled ? "Weekly Budget" : "This Week")
@@ -196,7 +190,7 @@ struct MealPlanView: View {
             }
 
             if weeklyBudgetEnabled && weeklyBudget > 0 {
-                let remaining = weeklyBudget - weekTotalCost
+                let remaining = weeklyBudget - totalCost
                 let overBudget = remaining < 0
 
                 HStack {
@@ -204,7 +198,7 @@ struct MealPlanView: View {
                         Text("Meals total")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text(String(format: "$%.2f", weekTotalCost))
+                        Text(String(format: "$%.2f", totalCost))
                             .font(.title3)
                             .fontWeight(.semibold)
                     }
@@ -226,18 +220,18 @@ struct MealPlanView: View {
                             .fill(Color(.systemGray5))
                         RoundedRectangle(cornerRadius: 4)
                             .fill(overBudget ? Color.red : Color.green)
-                            .frame(width: min(CGFloat(weekTotalCost / weeklyBudget), 1.0) * geo.size.width)
+                            .frame(width: min(CGFloat(totalCost / weeklyBudget), 1.0) * geo.size.width)
                     }
                 }
                 .frame(height: 8)
             } else {
-                Text(String(format: "Meals total: $%.2f", weekTotalCost))
+                Text(String(format: "Meals total: $%.2f", totalCost))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !assignedEntries.isEmpty {
+            if !assigned.isEmpty {
                 Divider()
                 Button {
                     Task { await addToCalendarTapped() }
@@ -255,19 +249,21 @@ struct MealPlanView: View {
         .cornerRadius(12)
     }
 
-    private var daysSection: some View {
+    // MARK: - Days section
+
+    private func daysSectionView(ws: Date, entries: [MealPlanEntry]) -> some View {
         VStack(spacing: 10) {
             ForEach(0..<7, id: \.self) { offset in
-                dayRow(offset: offset)
+                dayRow(offset: offset, weekStart: ws, entries: entries)
             }
         }
     }
 
-    private func dayRow(offset: Int) -> some View {
-        let date = Calendar.current.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
+    private func dayRow(offset: Int, weekStart ws: Date, entries: [MealPlanEntry]) -> some View {
+        let date = Calendar.current.date(byAdding: .day, value: offset, to: ws) ?? ws
         let dayName = date.formatted(.dateTime.weekday(.wide))
         let dateLabel = date.formatted(.dateTime.month().day())
-        let assignedEntry = entry(for: offset)
+        let assignedEntry = entries.first { $0.dayOffset == offset }
         let assignedRecipe = assignedEntry?.recipe
         let isToday = Calendar.current.isDateInToday(date)
 
@@ -340,16 +336,18 @@ struct MealPlanView: View {
 
     // MARK: - Meal assignment
 
-    private func entry(for dayOffset: Int) -> MealPlanEntry? {
-        weekEntries.first { $0.dayOffset == dayOffset }
+    private func entry(for dayOffset: Int, weekStart ws: Date) -> MealPlanEntry? {
+        allEntries.first {
+            $0.dayOffset == dayOffset &&
+            Calendar.current.isDate($0.weekStartDate, inSameDayAs: ws)
+        }
     }
 
     private func assignMeal(_ recipe: Recipe, toDayOffset offset: Int) {
-        if let existing = entry(for: offset) {
+        if let existing = entry(for: offset, weekStart: weekStart) {
             if let oldId = existing.calendarEventId {
                 try? calendarService.removeEvent(identifier: oldId)
             }
-            // Clear on-hand IDs — they belong to the previous recipe
             existing.onHandIngredientIds = []
             existing.recipe = recipe
             existing.calendarEventId = nil
@@ -361,7 +359,7 @@ struct MealPlanView: View {
     }
 
     private func removeMeal(fromDayOffset offset: Int) {
-        guard let existing = entry(for: offset) else { return }
+        guard let existing = entry(for: offset, weekStart: weekStart) else { return }
         if let oldId = existing.calendarEventId {
             try? calendarService.removeEvent(identifier: oldId)
         }
@@ -375,7 +373,6 @@ struct MealPlanView: View {
         if !calendarService.isAuthorized {
             guard await calendarService.requestAccess() else { return }
         }
-        // If a preferred calendar is already saved and still exists, use it directly.
         if let saved = calendarService.calendar(for: preferredCalendarId) {
             exportWeekToCalendar(saved)
         } else {
@@ -385,10 +382,9 @@ struct MealPlanView: View {
 
     private func exportWeekToCalendar(_ calendar: EKCalendar) {
         preferredCalendarId = calendar.calendarIdentifier
-
-        for entry in assignedEntries {
+        let entries = allEntries.filter { Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart) }
+        for entry in entries where entry.recipe != nil {
             guard let recipe = entry.recipe else { continue }
-            // Remove any previously exported event for this entry first.
             if let oldId = entry.calendarEventId {
                 try? calendarService.removeEvent(identifier: oldId)
                 entry.calendarEventId = nil
@@ -408,33 +404,39 @@ private struct IdentifiableInt: Identifiable {
     var id: Int { value }
 }
 
-// MARK: - Combined day plan sheet (recipe picker + on-hand ingredients)
+// MARK: - Day plan sheet (recipe picker with NavigationStack push/pop)
 
 private struct DayPlanSheet: View {
-    let entry: MealPlanEntry?
+    let dayOffset: Int
+    let weekStart: Date
     let recipes: [Recipe]
     let onAssign: (Recipe) -> Void
     let onRemove: () -> Void
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Query private var allEntries: [MealPlanEntry]
     @State private var searchText = ""
-    @State private var isPicking: Bool
-    @State private var currentRecipe: Recipe?
-    @State private var navigatingForward = true
+    @State private var path: [Recipe]
 
-    init(entry: MealPlanEntry?, recipes: [Recipe],
+    init(dayOffset: Int, weekStart: Date, recipes: [Recipe], initialRecipe: Recipe?,
          onAssign: @escaping (Recipe) -> Void,
          onRemove: @escaping () -> Void,
          onSave: @escaping () -> Void) {
-        self.entry = entry
+        self.dayOffset = dayOffset
+        self.weekStart = weekStart
         self.recipes = recipes
         self.onAssign = onAssign
         self.onRemove = onRemove
         self.onSave = onSave
-        let recipe = entry?.recipe
-        _currentRecipe = State(initialValue: recipe)
-        _isPicking = State(initialValue: recipe == nil)
+        _path = State(initialValue: initialRecipe.map { [$0] } ?? [])
+    }
+
+    private var entry: MealPlanEntry? {
+        allEntries.first {
+            $0.dayOffset == dayOffset &&
+            Calendar.current.isDate($0.weekStartDate, inSameDayAs: weekStart)
+        }
     }
 
     private var filtered: [Recipe] {
@@ -444,41 +446,30 @@ private struct DayPlanSheet: View {
     }
 
     var body: some View {
-        NavigationView {
-            Group {
-                if isPicking {
-                    pickerList
-                        .transition(.opacity)
-                } else if let recipe = currentRecipe {
-                    assignedList(recipe: recipe)
-                        .transition(.opacity)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    // Show Back only when in "change recipe" mode (had a recipe, now picking)
-                    if isPicking && currentRecipe != nil {
-                        Button("Back") {
-                            withAnimation(.easeInOut(duration: 0.25)) { isPicking = false }
-                        }
-                    } else if isPicking {
+        NavigationStack(path: $path) {
+            pickerList
+                .navigationTitle("Choose a Recipe")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    if !isPicking {
-                        Button("Done") {
-                            onSave()
-                            dismiss()
-                        }
-                    }
+                .navigationDestination(for: Recipe.self) { recipe in
+                    PlanDayDetailView(
+                        recipe: recipe,
+                        entry: entry,
+                        onBack: { path = [] },
+                        onRemove: {
+                            onRemove()
+                            path = []
+                        },
+                        onSave: onSave,
+                        dismissSheet: dismiss
+                    )
                 }
-            }
         }
     }
-
-    // MARK: - Recipe picker
 
     private var pickerList: some View {
         List {
@@ -489,7 +480,9 @@ private struct DayPlanSheet: View {
                 } else {
                     ForEach(filtered) { recipe in
                         Button {
-                            selectRecipe(recipe)
+                            onAssign(recipe)
+                            searchText = ""
+                            path = [recipe]
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(recipe.name)
@@ -509,38 +502,32 @@ private struct DayPlanSheet: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search recipes")
-        .navigationTitle("Choose a Recipe")
     }
+}
 
-    private func selectRecipe(_ recipe: Recipe) {
-        onAssign(recipe)
-        currentRecipe = recipe
-        navigatingForward = true
-        withAnimation(.easeInOut(duration: 0.25)) { isPicking = false }
-        searchText = ""
-    }
+// MARK: - Plan day detail view (on-hand ingredient checklist)
 
-    // MARK: - Assigned view with on-hand checklist
+private struct PlanDayDetailView: View {
+    let recipe: Recipe
+    let entry: MealPlanEntry?
+    let onBack: () -> Void
+    let onRemove: () -> Void
+    let onSave: () -> Void
+    let dismissSheet: DismissAction
 
-    private func assignedList(recipe: Recipe) -> some View {
+    var body: some View {
         List {
             Section {
                 HStack {
                     Text(recipe.name)
                         .font(.headline)
                     Spacer()
-                    Button("Change") {
-                        navigatingForward = false
-                        withAnimation(.easeInOut(duration: 0.25)) { isPicking = true }
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.accentColor)
+                    Button("Change") { onBack() }
+                        .font(.subheadline)
+                        .foregroundColor(.accentColor)
                 }
                 Button(role: .destructive) {
                     onRemove()
-                    currentRecipe = nil
-                    navigatingForward = false
-                    withAnimation(.easeInOut(duration: 0.25)) { isPicking = true }
                 } label: {
                     Label("Remove from plan", systemImage: "trash")
                 }
@@ -555,6 +542,16 @@ private struct DayPlanSheet: View {
             }
         }
         .navigationTitle("Plan Day")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    onSave()
+                    dismissSheet()
+                }
+            }
+        }
     }
 
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
@@ -637,7 +634,6 @@ struct CalendarPickerSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        // Group calendars by their source (account) name
                         ForEach(sources, id: \.self) { source in
                             Section(header: Text(source)) {
                                 ForEach(calendarsFor(source: source), id: \.calendarIdentifier) { cal in
@@ -650,7 +646,11 @@ struct CalendarPickerSheet: View {
             }
             .navigationTitle("Add to Calendar")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Cancel") { dismiss() })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
             .task {
                 if !service.isAuthorized {
                     _ = await service.requestAccess()
