@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct AddIngredientView: View {
     @StateObject private var viewModel = AddIngredientViewModel()
@@ -55,6 +56,16 @@ struct AddIngredientView: View {
                     }
                 }
             )
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
         }
         .sheet(item: $pendingTemplate) { template in
             RecipeUsageSheet(template: template) { qty, unit in
@@ -252,6 +263,16 @@ private struct RecipeUsageSheet: View {
                 }
                 .disabled(Double(qty) == nil)
             )
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
         }
     }
 }

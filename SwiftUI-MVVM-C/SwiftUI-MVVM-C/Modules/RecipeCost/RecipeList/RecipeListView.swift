@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import EventKit
+import UIKit
 
 struct RecipeListView: View {
     @Query(sort: \Recipe.name) private var recipes: [Recipe]
@@ -112,7 +113,7 @@ private struct AddRecipeSheet: View {
 
 // MARK: - Cost Settings
 
-private struct CostSettingsSheet: View {
+struct CostSettingsSheet: View {
     @AppStorage("salesTaxRate") private var salesTaxRate: Double = 0
     @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
     @AppStorage("krogerClientId") private var krogerClientId: String = ""
@@ -201,6 +202,16 @@ private struct CostSettingsSheet: View {
                 leading: Button("Cancel") { dismiss() },
                 trailing: Button("Save") { save() }
             )
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
             .sheet(isPresented: $isShowingCalendarPicker) {
                 CalendarPickerSheet(preferredCalendarId: preferredCalendarId) { cal in
                     preferredCalendarId = cal.calendarIdentifier

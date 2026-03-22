@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct RecipeDetailView: View {
     @StateObject private var viewModel: RecipeDetailViewModel
@@ -45,6 +46,14 @@ struct RecipeDetailView: View {
                     isAddingIngredient = true
                 } label: {
                     Image(systemName: "plus")
+                }
+            }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil)
                 }
             }
         }
@@ -375,6 +384,16 @@ private struct EditIngredientSheet: View {
                 leading: Button("Cancel") { dismiss() },
                 trailing: Button("Save") { save() }.disabled(!isValid)
             )
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
         }
     }
 

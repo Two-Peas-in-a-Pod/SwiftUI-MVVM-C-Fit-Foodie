@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import EventKit
+import UIKit
 
 // MARK: - Main view
 
@@ -25,6 +26,7 @@ struct MealPlanView: View {
     @State private var budgetText: String = ""
     @State private var isEditingBudget = false
     @State private var isShowingCalendarPicker = false
+    @State private var isShowingSettings = false
 
     @StateObject private var calendarService = MealPlanCalendarService.shared
 
@@ -67,8 +69,36 @@ struct MealPlanView: View {
                     daysSection
                 }
                 .padding()
+                .gesture(
+                    DragGesture(minimumDistance: 40, coordinateSpace: .local)
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                if value.translation.width < 0 {
+                                    weekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
+                                } else {
+                                    weekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
+                                }
+                            }
+                        }
+                )
             }
             .navigationTitle("Meal Plan")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { isShowingSettings = true } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
             .sheet(item: $pickingDay) { wrapper in
                 DayPlanSheet(
                     entry: entry(for: wrapper.value),
@@ -84,6 +114,9 @@ struct MealPlanView: View {
                 ) { calendar in
                     exportWeekToCalendar(calendar)
                 }
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                CostSettingsSheet()
             }
         }
     }
@@ -382,6 +415,7 @@ private struct DayPlanSheet: View {
     @State private var searchText = ""
     @State private var isPicking: Bool
     @State private var currentRecipe: Recipe?
+    @State private var navigatingForward = true
 
     init(entry: MealPlanEntry?, recipes: [Recipe],
          onAssign: @escaping (Recipe) -> Void,
@@ -408,8 +442,10 @@ private struct DayPlanSheet: View {
             Group {
                 if isPicking {
                     pickerList
+                        .transition(.move(edge: .leading))
                 } else if let recipe = currentRecipe {
                     assignedList(recipe: recipe)
+                        .transition(.move(edge: .trailing))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -417,7 +453,9 @@ private struct DayPlanSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     // Show Back only when in "change recipe" mode (had a recipe, now picking)
                     if isPicking && currentRecipe != nil {
-                        Button("Back") { isPicking = false }
+                        Button("Back") {
+                            withAnimation(.easeInOut(duration: 0.25)) { isPicking = false }
+                        }
                     } else if isPicking {
                         Button("Cancel") { dismiss() }
                     }
@@ -470,7 +508,8 @@ private struct DayPlanSheet: View {
     private func selectRecipe(_ recipe: Recipe) {
         onAssign(recipe)
         currentRecipe = recipe
-        isPicking = false
+        navigatingForward = true
+        withAnimation(.easeInOut(duration: 0.25)) { isPicking = false }
         searchText = ""
     }
 
@@ -483,13 +522,18 @@ private struct DayPlanSheet: View {
                     Text(recipe.name)
                         .font(.headline)
                     Spacer()
-                    Button("Change") { isPicking = true }
-                        .font(.subheadline)
-                        .foregroundColor(.accentColor)
+                    Button("Change") {
+                        navigatingForward = false
+                        withAnimation(.easeInOut(duration: 0.25)) { isPicking = true }
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.accentColor)
                 }
                 Button(role: .destructive) {
                     onRemove()
-                    dismiss()
+                    currentRecipe = nil
+                    navigatingForward = false
+                    withAnimation(.easeInOut(duration: 0.25)) { isPicking = true }
                 } label: {
                     Label("Remove from plan", systemImage: "trash")
                 }
