@@ -35,17 +35,30 @@ struct MealPlanView: View {
 
     var body: some View {
         NavigationStack {
-            TabView(selection: $pageIndex) {
-                ForEach(0..<1000, id: \.self) { index in
-                    weekPage(forIndex: index).tag(index)
+            VStack(spacing: 0) {
+                weekHeader(ws: currentWeekStart)
+                    .padding([.horizontal, .top])
+                    .padding(.bottom, 8)
+                TabView(selection: $pageIndex) {
+                    ForEach(0..<1000, id: \.self) { index in
+                        weekPage(forIndex: index).tag(index)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
             .navigationTitle("Meal Plan")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { isShowingSettings = true } label: {
                         Image(systemName: "gearshape")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if pageIndex != 500 {
+                        Button("This Week") {
+                            withAnimation { pageIndex = 500 }
+                        }
+                        .font(.subheadline)
                     }
                 }
                 ToolbarItemGroup(placement: .keyboard) {
@@ -102,7 +115,6 @@ struct MealPlanView: View {
         }
         ScrollView {
             VStack(spacing: 16) {
-                weekHeader(ws: ws)
                 budgetCardView(totalCost: totalCost, assigned: assigned)
                 daysSectionView(ws: ws, entries: entries)
             }
