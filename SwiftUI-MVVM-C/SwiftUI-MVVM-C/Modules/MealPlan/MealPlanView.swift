@@ -47,6 +47,7 @@ struct MealPlanView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .navigationTitle("Meal Plan")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { isShowingSettings = true } label: {

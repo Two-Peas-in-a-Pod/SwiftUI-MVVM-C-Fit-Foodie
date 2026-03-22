@@ -33,6 +33,7 @@ struct RecipeListView: View {
             }
             .searchable(text: $searchText, prompt: "Search recipes")
             .navigationTitle("Recipes")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { isShowingSettings = true } label: {
