@@ -72,13 +72,10 @@ struct MealPlanView: View {
                 }
             }
             .sheet(item: $pickingDay) { wrapper in
-                let ws = currentWeekStart
-                let currentEntry = entry(for: wrapper.value, weekStart: ws)
                 DayPlanSheet(
                     dayOffset: wrapper.value,
-                    weekStart: ws,
+                    weekStart: currentWeekStart,
                     recipes: recipes,
-                    initialRecipe: currentEntry?.recipe,
                     onAssign: { assignMeal($0, toDayOffset: wrapper.value) },
                     onRemove: { removeMeal(fromDayOffset: wrapper.value) },
                     onSave: { try? modelContext.save() }
@@ -426,7 +423,7 @@ private struct DayPlanSheet: View {
     @State private var searchText = ""
     @State private var path: [Recipe]
 
-    init(dayOffset: Int, weekStart: Date, recipes: [Recipe], initialRecipe: Recipe?,
+    init(dayOffset: Int, weekStart: Date, recipes: [Recipe],
          onAssign: @escaping (Recipe) -> Void,
          onRemove: @escaping () -> Void,
          onSave: @escaping () -> Void) {
@@ -436,7 +433,7 @@ private struct DayPlanSheet: View {
         self.onAssign = onAssign
         self.onRemove = onRemove
         self.onSave = onSave
-        _path = State(initialValue: initialRecipe.map { [$0] } ?? [])
+        _path = State(initialValue: [])
     }
 
     private var entry: MealPlanEntry? {
@@ -475,6 +472,14 @@ private struct DayPlanSheet: View {
                         dismissSheet: dismiss
                     )
                 }
+        }
+        .onAppear {
+            if path.isEmpty, let recipe = entry?.recipe {
+                withAnimation(.none) { path = [recipe] }
+            }
+        }
+        .onChange(of: entry == nil) { _, isNil in
+            if isNil { dismiss() }
         }
     }
 
