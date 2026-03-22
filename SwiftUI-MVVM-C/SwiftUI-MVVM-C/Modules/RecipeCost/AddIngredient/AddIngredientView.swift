@@ -44,9 +44,11 @@ struct AddIngredientView: View {
             }
             .navigationTitle("Add Ingredient")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") { dismiss() },
-                trailing: Group {
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
                     if viewModel.activeTab == .manual {
                         Button("Save") {
                             viewModel.saveIngredient(to: recipe, context: modelContext)
@@ -55,8 +57,6 @@ struct AddIngredientView: View {
                         .disabled(!viewModel.isFormValid)
                     }
                 }
-            )
-            .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {
@@ -256,14 +256,16 @@ private struct RecipeUsageSheet: View {
             }
             .navigationTitle("Set Amount")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") { dismiss() },
-                trailing: Button("Add to Recipe") {
-                    onSave(qty, unit)
-                }
-                .disabled(Double(qty) == nil)
-            )
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add to Recipe") {
+                        onSave(qty, unit)
+                    }
+                    .disabled(Double(qty) == nil)
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {

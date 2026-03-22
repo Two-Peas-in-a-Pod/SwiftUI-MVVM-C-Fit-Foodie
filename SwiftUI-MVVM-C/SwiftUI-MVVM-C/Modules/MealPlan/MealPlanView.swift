@@ -27,6 +27,7 @@ struct MealPlanView: View {
     @State private var isEditingBudget = false
     @State private var isShowingCalendarPicker = false
     @State private var isShowingSettings = false
+    @GestureState private var weekDragOffset: CGFloat = 0
 
     @StateObject private var calendarService = MealPlanCalendarService.shared
 
@@ -69,23 +70,28 @@ struct MealPlanView: View {
                     daysSection
                 }
                 .padding()
-                .gesture(
-                    DragGesture(minimumDistance: 40, coordinateSpace: .local)
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                if value.translation.width < 0 {
-                                    weekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
-                                } else {
-                                    weekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
-                                }
+                .offset(x: weekDragOffset)
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 40, coordinateSpace: .local)
+                    .updating($weekDragOffset) { value, state, _ in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        state = value.translation.width * 0.25
+                    }
+                    .onEnded { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            if value.translation.width < 0 {
+                                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
+                            } else {
+                                weekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
                             }
                         }
-                )
-            }
+                    }
+            )
             .navigationTitle("Meal Plan")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button { isShowingSettings = true } label: {
                         Image(systemName: "gearshape")
                     }
@@ -442,10 +448,10 @@ private struct DayPlanSheet: View {
             Group {
                 if isPicking {
                     pickerList
-                        .transition(.move(edge: .leading))
+                        .transition(.opacity)
                 } else if let recipe = currentRecipe {
                     assignedList(recipe: recipe)
-                        .transition(.move(edge: .trailing))
+                        .transition(.opacity)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -494,6 +500,7 @@ private struct DayPlanSheet: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
