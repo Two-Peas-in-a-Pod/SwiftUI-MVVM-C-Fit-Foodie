@@ -469,7 +469,7 @@ private struct DayPlanSheet: View {
                         onBack: { path = [] },
                         onRemove: {
                             onRemove()
-                            path = []
+                            dismiss()
                         },
                         onSave: onSave,
                         dismissSheet: dismiss
