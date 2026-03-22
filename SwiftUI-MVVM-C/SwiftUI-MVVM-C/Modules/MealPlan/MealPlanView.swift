@@ -367,6 +367,7 @@ struct MealPlanView: View {
         if let oldId = existing.calendarEventId {
             try? calendarService.removeEvent(identifier: oldId)
         }
+        existing.recipe = nil  // nil out before delete so stale @Query renders skip this entry
         modelContext.delete(existing)
         try? modelContext.save()
     }
