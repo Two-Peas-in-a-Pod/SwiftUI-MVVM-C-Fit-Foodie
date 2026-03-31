@@ -44,6 +44,7 @@
 		FFAA0071000000000000001A /* MealPlanEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0061000000000000001A /* MealPlanEntry.swift */; };
 		FFAA0072000000000000001A /* MealPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0062000000000000001A /* MealPlanView.swift */; };
 		FFAA0073000000000000001A /* MealPlanCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0063000000000000001A /* MealPlanCalendarService.swift */; };
+		FFAA0075000000000000001A /* RecipeTextParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA0074000000000000001A /* RecipeTextParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -97,6 +98,7 @@
 		FFAA0061000000000000001A /* MealPlanEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanEntry.swift; sourceTree = "<group>"; };
 		FFAA0062000000000000001A /* MealPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanView.swift; sourceTree = "<group>"; };
 		FFAA0063000000000000001A /* MealPlanCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPlanCalendarService.swift; sourceTree = "<group>"; };
+		FFAA0074000000000000001A /* RecipeTextParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeTextParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -225,6 +227,7 @@
 				FFAA0013000000000000001A /* RecipeCostResult.swift */,
 				FFAA0060000000000000001A /* IngredientTemplate.swift */,
 				FFAA0061000000000000001A /* MealPlanEntry.swift */,
+				FFAA0074000000000000001A /* RecipeTextParser.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -476,6 +479,7 @@
 			FFAA0071000000000000001A /* MealPlanEntry.swift in Sources */,
 			FFAA0072000000000000001A /* MealPlanView.swift in Sources */,
 			FFAA0073000000000000001A /* MealPlanCalendarService.swift in Sources */,
+			FFAA0075000000000000001A /* RecipeTextParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
