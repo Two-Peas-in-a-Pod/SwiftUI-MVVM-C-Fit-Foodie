@@ -80,35 +80,127 @@ struct RecipeListView: View {
 private struct AddRecipeSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+
+    private enum InputMode: String, CaseIterable {
+        case manual = "Manual"
+        case paste  = "Paste"
+    }
+
+    @State private var inputMode: InputMode = .manual
     @State private var name = ""
     @State private var servingsText = "1"
+    @State private var pastedText = ""
+    @State private var parseWarning: String? = nil
+
+    private var nameIsEmpty: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
+    private var addDisabled: Bool {
+        nameIsEmpty || (inputMode == .paste && pastedText.trimmingCharacters(in: .whitespaces).isEmpty)
+    }
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Recipe Name")) {
-                    TextField("e.g. Chocolate Chip Cookies", text: $name)
+            VStack(spacing: 0) {
+                Picker("Input mode", selection: $inputMode) {
+                    ForEach(InputMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
-                Section(header: Text("Servings per Batch")) {
-                    TextField("e.g. 24", text: $servingsText)
-                        .keyboardType(.numberPad)
+                .pickerStyle(.segmented)
+                .padding()
+
+                if inputMode == .manual {
+                    Form {
+                        Section(header: Text("Recipe Name")) {
+                            TextField("e.g. Chocolate Chip Cookies", text: $name)
+                        }
+                        Section(header: Text("Servings per Batch")) {
+                            TextField("e.g. 24", text: $servingsText)
+                                .keyboardType(.numberPad)
+                        }
+                    }
+                } else {
+                    pasteForm
                 }
             }
             .navigationTitle("New Recipe")
             .navigationBarItems(
                 leading: Button("Cancel") { dismiss() },
-                trailing: Button("Add") { save() }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                trailing: Button(inputMode == .manual ? "Add" : "Import") {
+                    inputMode == .manual ? saveManual() : savePaste()
+                }
+                .disabled(addDisabled)
             )
         }
     }
 
-    private func save() {
+    // MARK: - Paste form
+
+    private var pasteForm: some View {
+        Form {
+            Section(header: Text("Recipe Name")) {
+                TextField("e.g. Chocolate Chip Cookies", text: $name)
+            }
+            Section(header: Text("Servings per Batch")) {
+                TextField("e.g. 24", text: $servingsText)
+                    .keyboardType(.numberPad)
+            }
+            Section(
+                header: Text("Ingredients"),
+                footer: formatHint
+            ) {
+                TextEditor(text: $pastedText)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .onChange(of: pastedText) { _, _ in parseWarning = nil }
+            }
+            if let warning = parseWarning {
+                Section {
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+    }
+
+    private var formatHint: some View {
+        Text("One ingredient per pair of lines:\nSpinach, $2.35/bag\nUse: 1 cup")
+            .font(.caption)
+            .foregroundColor(.secondary)
+    }
+
+    // MARK: - Save
+
+    private func saveManual() {
         let servings = max(1, Int(servingsText) ?? 1)
         let recipe = Recipe(name: name.trimmingCharacters(in: .whitespaces), servingsPerBatch: servings)
         modelContext.insert(recipe)
         try? modelContext.save()
         dismiss()
+    }
+
+    private func savePaste() {
+        let parsed = RecipeTextParser.parse(pastedText)
+        let servings = max(1, Int(servingsText) ?? 1)
+        let recipe = Recipe(name: name.trimmingCharacters(in: .whitespaces), servingsPerBatch: servings)
+        modelContext.insert(recipe)
+        for pi in parsed.ingredients {
+            let ingredient = Ingredient(
+                name: pi.name,
+                purchaseCost: pi.purchaseCost,
+                purchaseQuantity: pi.purchaseQuantity,
+                purchaseUnit: pi.purchaseUnit,
+                recipeQuantity: pi.recipeQuantity,
+                recipeUnit: pi.recipeUnit,
+                isAlcohol: AddIngredientViewModel.detectsAlcohol(in: pi.name)
+            )
+            recipe.ingredients.append(ingredient)
+            modelContext.insert(ingredient)
+        }
+        try? modelContext.save()
+        if parsed.ingredients.isEmpty {
+            parseWarning = "No ingredients could be read — check the format above."
+        } else {
+            dismiss()
+        }
     }
 }
 
