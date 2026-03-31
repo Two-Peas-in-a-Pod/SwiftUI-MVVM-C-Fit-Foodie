@@ -150,7 +150,7 @@ class AddIngredientViewModel: ObservableObject {
         try? context.save()
     }
 
-    private func upsertTemplate(name: String, cost: Double, purchaseQty: Double, purchaseUnit: String, recipeUnit: String, isAlcohol: Bool, context: ModelContext) {
+    static func upsertTemplate(name: String, cost: Double, purchaseQty: Double, purchaseUnit: String, recipeUnit: String, isAlcohol: Bool, context: ModelContext) {
         let descriptor = FetchDescriptor<IngredientTemplate>(
             predicate: #Predicate { $0.name == name }
         )

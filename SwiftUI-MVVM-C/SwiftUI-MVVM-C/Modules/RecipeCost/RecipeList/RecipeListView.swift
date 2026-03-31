@@ -220,6 +220,15 @@ private struct AddRecipeSheet: View {
             )
             recipe.ingredients.append(ingredient)
             modelContext.insert(ingredient)
+            AddIngredientViewModel.upsertTemplate(
+                name: pi.name,
+                cost: pi.purchaseCost,
+                purchaseQty: pi.purchaseQuantity,
+                purchaseUnit: pi.purchaseUnit,
+                recipeUnit: pi.recipeUnit,
+                isAlcohol: ingredient.isAlcohol,
+                context: modelContext
+            )
         }
         try? modelContext.save()
         dismiss()
