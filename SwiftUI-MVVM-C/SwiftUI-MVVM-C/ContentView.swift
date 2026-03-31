@@ -6,13 +6,20 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
-    static let username = "juicebyjustin"
-    
     var body: some View {
-        NavigationView {
-            RepoListCoordinator(username: Self.username)   
+        TabView {
+            RecipeListView()
+                .tabItem {
+                    Label("Recipes", systemImage: "fork.knife")
+                }
+            MealPlanView()
+                .tabItem {
+                    Label("Meal Plan", systemImage: "calendar")
+                }
         }
+        .modelContainer(RecipeStore.shared)
     }
 }

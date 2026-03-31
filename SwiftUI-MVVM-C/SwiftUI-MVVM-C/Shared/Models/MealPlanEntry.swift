@@ -1,0 +1,51 @@
+//
+//  MealPlanEntry.swift
+//  SwiftUI-MVVM-C
+//
+
+import Foundation
+import SwiftData
+
+/// Represents a single meal assigned to a specific day in a specific week.
+/// `weekStartDate` is always normalized to the Monday of that week at midnight.
+@Model
+class MealPlanEntry {
+    var id: UUID
+    /// Monday of the week this entry belongs to (normalized to midnight).
+    var weekStartDate: Date
+    /// 0 = Monday … 6 = Sunday
+    var dayOffset: Int
+    var recipe: Recipe?
+    /// EKEvent identifier stored so the calendar event can be removed when the meal is changed.
+    var calendarEventId: String?
+    /// UUIDs (as strings) of ingredients the user already has on hand this week.
+    /// These are excluded from the "buy cost" used in budget calculations.
+    var onHandIngredientIds: [String] = []
+
+    init(weekStartDate: Date, dayOffset: Int, recipe: Recipe? = nil) {
+        self.id = UUID()
+        self.weekStartDate = weekStartDate
+        self.dayOffset = dayOffset
+        self.recipe = recipe
+        self.calendarEventId = nil
+        self.onHandIngredientIds = []
+    }
+
+    /// The calendar date this entry falls on.
+    var date: Date {
+        Calendar.current.date(byAdding: .day, value: dayOffset, to: weekStartDate) ?? weekStartDate
+    }
+}
+
+// MARK: - Week helpers
+
+extension Date {
+    /// Returns the start of the week containing this date, normalized to midnight local time.
+    /// - Parameter firstWeekday: 1 = Sunday, 2 = Monday (default Sunday)
+    func startOfWeek(firstWeekday: Int = 1) -> Date {
+        var cal = Calendar.current
+        cal.firstWeekday = firstWeekday
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
+        return cal.date(from: comps) ?? self
+    }
+}

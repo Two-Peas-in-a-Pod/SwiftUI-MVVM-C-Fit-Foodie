@@ -20,6 +20,14 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Portio adds your planned meals to a &quot;Meal Plan&quot; calendar so you always know what you&apos;re cooking and when.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Portio adds your planned meals to a &quot;Meal Plan&quot; calendar so you always know what you&apos;re cooking and when.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to photograph receipts so ingredient prices can be read automatically.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select a photo of a receipt so ingredient prices can be read automatically.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

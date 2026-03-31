@@ -1,0 +1,323 @@
+//
+//  AddIngredientView.swift
+//  SwiftUI-MVVM-C
+//
+
+import SwiftUI
+import SwiftData
+import UIKit
+
+struct AddIngredientView: View {
+    @StateObject private var viewModel = AddIngredientViewModel()
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("alcoholTaxRate") private var alcoholTaxRate: Double = 0
+    let recipe: Recipe
+
+    @State private var pendingTemplate: IngredientTemplate?
+
+    private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                Picker("Mode", selection: $viewModel.activeTab) {
+                    ForEach(AddIngredientTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding()
+
+                switch viewModel.activeTab {
+                case .library:
+                    libraryView
+                case .manual:
+                    manualEntryForm
+                case .search:
+                    krogerSearchView
+                case .receipt:
+                    ReceiptScannerView { item in
+                        viewModel.prefillFromReceiptItem(item)
+                    }
+                }
+            }
+            .navigationTitle("Add Ingredient")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if viewModel.activeTab == .manual {
+                        Button("Save") {
+                            viewModel.saveIngredient(to: recipe, context: modelContext)
+                            dismiss()
+                        }
+                        .disabled(!viewModel.isFormValid)
+                    }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
+        }
+        .sheet(item: $pendingTemplate) { template in
+            RecipeUsageSheet(template: template) { qty, unit in
+                viewModel.prefillFromTemplate(template)
+                viewModel.recipeQuantity = qty
+                viewModel.recipeUnit = unit
+                viewModel.saveIngredient(to: recipe, context: modelContext)
+                pendingTemplate = nil
+                dismiss()
+            }
+        }
+    }
+
+    // MARK: - Library Tab
+
+    private var libraryView: some View {
+        IngredientLibraryView { template in
+            pendingTemplate = template
+        }
+    }
+
+    // MARK: - Manual Entry
+
+    private var manualEntryForm: some View {
+        Form {
+            Section(header: Text("Ingredient")) {
+                TextField("Name (e.g. Olive Oil)", text: $viewModel.name)
+                    .onChange(of: viewModel.name) { _, _ in viewModel.updateAlcoholDetection() }
+                if alcoholTaxRate > 0 && viewModel.isAlcohol {
+                    HStack {
+                        Label("Alcohol tax will apply", systemImage: "wineglass")
+                            .font(.caption)
+                            .foregroundColor(.purple)
+                        Spacer()
+                        Button { viewModel.dismissAlcohol() } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.purple.opacity(0.5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowBackground(Color.purple.opacity(0.08))
+                }
+            }
+
+            Section(header: Text("Purchase Info — what you bought at the store")) {
+                HStack {
+                    Text("Cost ($)")
+                    Spacer()
+                    TextField("e.g. 6.99", text: $viewModel.purchaseCost)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                HStack {
+                    Text("Quantity")
+                    Spacer()
+                    TextField("e.g. 32", text: $viewModel.purchaseQuantity)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                Picker("Unit", selection: $viewModel.purchaseUnit) {
+                    ForEach(units, id: \.self) { Text($0).tag($0) }
+                }
+            }
+
+            Section(header: Text("Recipe Usage — how much this recipe calls for")) {
+                HStack {
+                    Text("Quantity")
+                    Spacer()
+                    TextField("e.g. 2", text: $viewModel.recipeQuantity)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                Picker("Unit", selection: $viewModel.recipeUnit) {
+                    ForEach(units, id: \.self) { Text($0).tag($0) }
+                }
+            }
+
+            if let confirmed = viewModel.confirmedPrice {
+                Section(header: Text("Price Confirmation")) {
+                    HStack {
+                        Text("Price from Kroger lookup:")
+                        Spacer()
+                        Text(String(format: "$%.2f", confirmed))
+                            .foregroundColor(.secondary)
+                    }
+                    Text("Verify this matches what you paid, or edit the Cost field above.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Kroger Search
+
+    private var krogerSearchView: some View {
+        VStack(spacing: 0) {
+            HStack {
+                TextField("Search for an ingredient…", text: $viewModel.searchQuery)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Button("Search") {
+                    viewModel.searchProducts()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding()
+
+            if viewModel.isSearching {
+                ProgressView("Searching Kroger…").padding()
+                Spacer()
+            } else if let error = viewModel.searchError {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.subheadline)
+                    .padding()
+                Spacer()
+            } else if viewModel.searchResults.isEmpty {
+                Text("Search for an ingredient to see price suggestions from Kroger.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                Spacer()
+            } else {
+                List(viewModel.searchResults) { product in
+                    Button {
+                        viewModel.selectProduct(product)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(product.description)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                            Text(product.displayPrice)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Recipe Usage Sheet
+
+/// Focused sheet shown when picking from the library.
+/// Displays the stored purchase info and asks only for the recipe usage amount.
+private struct RecipeUsageSheet: View {
+    let template: IngredientTemplate
+    let onSave: (String, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var qty = ""
+    @State private var unit: String
+
+    private let units = ["oz", "fl oz", "g", "kg", "lb", "cup", "tbsp", "tsp", "ml", "L", "count"]
+
+    init(template: IngredientTemplate, onSave: @escaping (String, String) -> Void) {
+        self.template = template
+        self.onSave = onSave
+        _unit = State(initialValue: template.defaultRecipeUnit)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Ingredient")) {
+                    HStack {
+                        Text(template.name)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(String(format: "$%.2f", template.defaultPurchaseCost)) / \(String(format: "%g", template.defaultPurchaseQuantity)) \(template.defaultPurchaseUnit)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Section(header: Text("How much does this recipe use?")) {
+                    HStack {
+                        TextField("e.g. 3", text: $qty)
+                            .keyboardType(.decimalPad)
+                        Picker("Unit", selection: $unit) {
+                            ForEach(units, id: \.self) { Text($0).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+            }
+            .navigationTitle("Set Amount")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add to Recipe") {
+                        onSave(qty, unit)
+                    }
+                    .disabled(Double(qty) == nil)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Ingredient Library
+
+struct IngredientLibraryView: View {
+    @Query(sort: \IngredientTemplate.name) private var templates: [IngredientTemplate]
+    @State private var searchText = ""
+    let onSelect: (IngredientTemplate) -> Void
+
+    private var filtered: [IngredientTemplate] {
+        guard !searchText.isEmpty else { return templates }
+        return templates.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if templates.isEmpty {
+                Spacer()
+                ContentUnavailableView(
+                    "No Saved Ingredients",
+                    systemImage: "cart",
+                    description: Text("Ingredients you add are saved here for reuse in future recipes.")
+                )
+                Spacer()
+            } else {
+                List(filtered) { template in
+                    Button {
+                        onSelect(template)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(template.name)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                            Text("\(String(format: "$%.2f", template.defaultPurchaseCost)) for \(String(format: "%g", template.defaultPurchaseQuantity)) \(template.defaultPurchaseUnit)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .searchable(text: $searchText, prompt: "Search library")
+            }
+        }
+    }
+}
