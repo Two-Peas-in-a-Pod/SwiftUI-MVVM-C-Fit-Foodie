@@ -19,6 +19,9 @@ struct ParsedIngredient {
 
 struct ParsedRecipe {
     var ingredients: [ParsedIngredient]
+    /// Number of ingredient pairs where a purchase line was found but the following
+    /// Use: line was missing or malformed.
+    var skippedCount: Int
 }
 
 // MARK: - Parser
@@ -41,11 +44,16 @@ enum RecipeTextParser {
             .filter { !$0.isEmpty }
 
         var ingredients: [ParsedIngredient] = []
+        var skipped = 0
         var i = 0
         while i < lines.count {
             guard let purchase = parsePurchaseLine(lines[i]) else { i += 1; continue }
             let nextIndex = i + 1
-            guard nextIndex < lines.count, let use = parseUseLine(lines[nextIndex]) else { i += 1; continue }
+            guard nextIndex < lines.count, let use = parseUseLine(lines[nextIndex]) else {
+                skipped += 1
+                i += 1
+                continue
+            }
             ingredients.append(ParsedIngredient(
                 name: purchase.name,
                 purchaseCost: purchase.cost,
@@ -56,7 +64,7 @@ enum RecipeTextParser {
             ))
             i = nextIndex + 1
         }
-        return ParsedRecipe(ingredients: ingredients)
+        return ParsedRecipe(ingredients: ingredients, skippedCount: skipped)
     }
 
     // MARK: - Line parsers
@@ -88,7 +96,7 @@ enum RecipeTextParser {
         return (name, cost, quantity, unit)
     }
 
-    /// Parses `Use: 1 cup` or `use: 0.5 lb`
+    /// Parses `Use: 1 cup`, `use: 0.5 lb`, or `Use: 1/2 cup`
     private static func parseUseLine(_ line: String) -> (quantity: Double, unit: String)? {
         let lower = line.lowercased()
         guard lower.hasPrefix("use:") else { return nil }
@@ -97,7 +105,19 @@ enum RecipeTextParser {
         guard let spaceIdx = rest.firstIndex(where: { $0.isWhitespace }) else { return nil }
         let qtyStr = String(rest[rest.startIndex..<spaceIdx])
         let unit = String(rest[rest.index(after: spaceIdx)...]).trimmingCharacters(in: .whitespaces)
-        guard let qty = Double(qtyStr), !unit.isEmpty else { return nil }
+        guard let qty = parseNumber(qtyStr), !unit.isEmpty else { return nil }
         return (qty, unit)
+    }
+
+    /// Parses a decimal string or a simple fraction like `1/2`, `3/4`, `2/3`.
+    private static func parseNumber(_ s: String) -> Double? {
+        if let d = Double(s) { return d }
+        let parts = s.split(separator: "/", maxSplits: 1)
+        guard parts.count == 2,
+              let num = Double(parts[0]),
+              let den = Double(parts[1]),
+              den != 0
+        else { return nil }
+        return num / den
     }
 }

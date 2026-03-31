@@ -91,6 +91,7 @@ private struct AddRecipeSheet: View {
     @State private var servingsText = "1"
     @State private var pastedText = ""
     @State private var parseWarning: String? = nil
+    @State private var partialParseResult: ParsedRecipe? = nil
 
     private var nameIsEmpty: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
     private var addDisabled: Bool {
@@ -128,6 +129,19 @@ private struct AddRecipeSheet: View {
                 }
                 .disabled(addDisabled)
             )
+            .alert("Some Ingredients Couldn't Be Parsed", isPresented: .init(
+                get: { partialParseResult != nil },
+                set: { if !$0 { partialParseResult = nil } }
+            )) {
+                Button("Import \(partialParseResult?.ingredients.count ?? 0) Ingredient\(partialParseResult?.ingredients.count == 1 ? "" : "s")") {
+                    if let p = partialParseResult { commitPaste(p) }
+                }
+                Button("Cancel", role: .cancel) { partialParseResult = nil }
+            } message: {
+                if let p = partialParseResult {
+                    Text("\(p.skippedCount) ingredient\(p.skippedCount == 1 ? "" : "s") couldn't be parsed and will be skipped. Check those lines for format errors, or import what was found.")
+                }
+            }
         }
     }
 
@@ -149,7 +163,7 @@ private struct AddRecipeSheet: View {
                 TextEditor(text: $pastedText)
                     .font(.system(.body, design: .monospaced))
                     .frame(minHeight: 200)
-                    .onChange(of: pastedText) { _, _ in parseWarning = nil }
+                    .onChange(of: pastedText) { _, _ in parseWarning = nil; partialParseResult = nil }
             }
             if let warning = parseWarning {
                 Section {
@@ -162,7 +176,7 @@ private struct AddRecipeSheet: View {
     }
 
     private var formatHint: some View {
-        Text("One ingredient per pair of lines:\nSpinach, $2.35/bag\nUse: 1 cup")
+        Text("One ingredient per pair of lines:\nSpinach, $2.35/bag\nUse: 1/2 cup\n\nFractions (1/2, 3/4) and decimals (0.5) are both supported.")
             .font(.caption)
             .foregroundColor(.secondary)
     }
@@ -179,6 +193,18 @@ private struct AddRecipeSheet: View {
 
     private func savePaste() {
         let parsed = RecipeTextParser.parse(pastedText)
+        guard !parsed.ingredients.isEmpty else {
+            parseWarning = "No ingredients could be read — check the format above."
+            return
+        }
+        if parsed.skippedCount > 0 {
+            partialParseResult = parsed
+            return
+        }
+        commitPaste(parsed)
+    }
+
+    private func commitPaste(_ parsed: ParsedRecipe) {
         let servings = max(1, Int(servingsText) ?? 1)
         let recipe = Recipe(name: name.trimmingCharacters(in: .whitespaces), servingsPerBatch: servings)
         modelContext.insert(recipe)
@@ -196,11 +222,7 @@ private struct AddRecipeSheet: View {
             modelContext.insert(ingredient)
         }
         try? modelContext.save()
-        if parsed.ingredients.isEmpty {
-            parseWarning = "No ingredients could be read — check the format above."
-        } else {
-            dismiss()
-        }
+        dismiss()
     }
 }
 
